@@ -45,7 +45,10 @@ fn apply_stealth_flags(hwnd: HWND) -> windows::core::Result<()> {
 #[tauri::command]
 fn capture_screen() -> String {
     log("capture_screen called");
-    let screens = Screen::all().unwrap();
+    let screens = match Screen::all() {
+        Ok(s) => s,
+        Err(e) => return format!("Screen capture failed: {}", e),
+    };
     let screen = screens[0];
     let image = screen.capture().unwrap();
     let mut bytes: Vec<u8> = Vec::new();
@@ -57,11 +60,19 @@ fn capture_screen() -> String {
             image::ColorType::Rgba8.into(),
         )
         .unwrap();
-    let mut lt = LepTess::new(None, "eng").unwrap();
-    lt.set_image_from_mem(&bytes).unwrap();
-    let text = lt.get_utf8_text().unwrap();
-    log(&format!("Screen text length: {}", text.len()));
-    text
+    let lt = LepTess::new(None, "eng");
+    match lt {
+        Ok(mut lt) => {
+            lt.set_image_from_mem(&bytes).unwrap();
+            let text = lt.get_utf8_text().unwrap_or_default();
+            log(&format!("Screen text length: {}", text.len()));
+            text
+        }
+        Err(e) => {
+            log(&format!("Tesseract failed: {}", e));
+            format!("OCR failed: {}", e)
+        }
+    }
 }
 
 fn main() {
