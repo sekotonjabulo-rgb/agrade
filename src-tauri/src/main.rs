@@ -17,10 +17,11 @@ use windows::Win32::UI::WindowsAndMessaging::{
 };
 
 fn log(msg: &str) {
+    let path = "C:\\Users\\Lenovo\\Desktop\\agrade_debug.log".to_string();
     let mut file = OpenOptions::new()
         .create(true)
         .append(true)
-        .open("C:\\agrade_debug.log")
+        .open(path)
         .unwrap();
     writeln!(file, "{}", msg).unwrap();
 }
