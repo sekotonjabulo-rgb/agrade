@@ -11,6 +11,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Cache Rust build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: rust-${{ runner.os }}-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: rust-${{ runner.os }}-
       - name: Install vcpkg
         run: |
           git clone https://github.com/microsoft/vcpkg.git C:\vcpkg
