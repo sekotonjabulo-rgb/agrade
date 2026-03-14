@@ -11,12 +11,12 @@ export default function App() {
 
   const handleAskGroq = useCallback(async (base64Image: string) => {
     setIsLoading(true);
-    setResponse("Thinking...");
+    setResponse("");
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => {
         controller.abort();
-        setResponse("Server is waking up, please try again in 30 seconds.");
+        setResponse("Server is waking up — try again in 30 seconds.");
       }, 15000);
       const res = await fetch(SERVER_URL, {
         method: "POST",
@@ -40,7 +40,6 @@ export default function App() {
 
   useEffect(() => {
     const shortcut = "CommandOrControl+Shift+G";
-
     const setupShortcut = async () => {
       try {
         await unregister(shortcut);
@@ -50,28 +49,49 @@ export default function App() {
         handleAskGroq(screenBase64);
       });
     };
-
     setupShortcut();
-
-    return () => {
-      unregister(shortcut);
-    };
+    return () => { unregister(shortcut); };
   }, [handleAskGroq]);
+
+  const handleAsk = async () => {
+    const screenBase64 = await invoke<string>("capture_screen");
+    handleAskGroq(screenBase64);
+  };
 
   return (
     <div className="overlay-container">
-      <div className="response-box">
-        {isLoading ? "Thinking..." : response || "Press Ctrl+Shift+G or Ask."}
+      <div className="overlay-header">
+        <div className="overlay-brand">
+          <div className="overlay-dot" />
+          <span className="overlay-title">Agrade</span>
+        </div>
+        <span className="overlay-shortcut">⌘⇧G</span>
       </div>
-      <button
-        className="ask-button"
-        onClick={async () => {
-          const screenBase64 = await invoke<string>("capture_screen");
-          handleAskGroq(screenBase64);
-        }}
-      >
-        Ask
-      </button>
+
+      <div className="response-area">
+        {isLoading ? (
+          <div className="response-thinking">
+            <div className="thinking-bars">
+              <span /><span /><span />
+            </div>
+            Analysing
+          </div>
+        ) : response ? (
+          <p className="response-text">{response}</p>
+        ) : (
+          <p className="response-empty">Awaiting capture</p>
+        )}
+      </div>
+
+      <div className="overlay-footer">
+        <button
+          className="ask-button"
+          onClick={handleAsk}
+          disabled={isLoading}
+        >
+          Capture Screen
+        </button>
+      </div>
     </div>
   );
 }
