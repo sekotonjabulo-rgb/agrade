@@ -20,7 +20,8 @@ jobs:
         run: echo "VCPKG_ROOT=C:\vcpkg" >> $env:GITHUB_ENV
         shell: pwsh
       - name: Install Leptonica via vcpkg
-  run: C:\vcpkg\vcpkg.exe install leptonica:x64-windows-static-md        shell: pwsh
+        run: C:\vcpkg\vcpkg.exe install leptonica:x64-windows-static-md
+        shell: pwsh
       - run: npm install
       - run: npm run tauri build
         env:
