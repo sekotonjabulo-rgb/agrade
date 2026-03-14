@@ -6,7 +6,6 @@ use std::io::Write;
 use std::fs::OpenOptions;
 use image::ImageEncoder;
 use image::codecs::png::PngEncoder;
-use leptess::LepTess;
 
 #[cfg(target_os = "windows")]
 use windows::Win32::Foundation::HWND;
@@ -49,8 +48,10 @@ fn capture_screen() -> String {
         Ok(s) => s,
         Err(e) => return format!("Screen capture failed: {}", e),
     };
-    let screen = screens[0];
+    let screen = &screens[0];
     let image = screen.capture().unwrap();
+    log(&format!("Captured {}x{}", image.width(), image.height()));
+
     let mut bytes: Vec<u8> = Vec::new();
     PngEncoder::new(Cursor::new(&mut bytes))
         .write_image(
@@ -60,19 +61,35 @@ fn capture_screen() -> String {
             image::ColorType::Rgba8.into(),
         )
         .unwrap();
-    let lt = LepTess::new(None, "eng");
-    match lt {
-        Ok(mut lt) => {
-            lt.set_image_from_mem(&bytes).unwrap();
-            let text = lt.get_utf8_text().unwrap_or_default();
-            log(&format!("Screen text length: {}", text.len()));
-            text
-        }
-        Err(e) => {
-            log(&format!("Tesseract failed: {}", e));
-            format!("OCR failed: {}", e)
-        }
+
+    #[cfg(target_os = "windows")]
+    {
+        use windows::Graphics::Imaging::BitmapDecoder;
+        use windows::Media::Ocr::OcrEngine;
+        use windows::Storage::Streams::InMemoryRandomAccessStream;
+        use windows::Storage::Streams::DataWriter;
+
+        let stream = InMemoryRandomAccessStream::new().unwrap();
+        let writer = stream.GetOutputStreamAt(0).unwrap();
+        let data_writer = DataWriter::CreateDataWriter(&writer).unwrap();
+        data_writer.WriteBytes(&bytes).unwrap();
+        data_writer.StoreAsync().unwrap().get().unwrap();
+
+        let decoder = BitmapDecoder::CreateWithIdAsync(
+            BitmapDecoder::PngDecoderId().unwrap(),
+            &stream,
+        ).unwrap().get().unwrap();
+
+        let bitmap = decoder.GetSoftwareBitmapAsync().unwrap().get().unwrap();
+        let engine = OcrEngine::TryCreateFromUserProfileLanguages().unwrap();
+        let result = engine.RecognizeAsync(&bitmap).unwrap().get().unwrap();
+        let text = result.Text().unwrap().to_string();
+        log(&format!("OCR text length: {}", text.len()));
+        return text;
     }
+
+    #[cfg(not(target_os = "windows"))]
+    String::from("OCR only supported on Windows")
 }
 
 fn main() {
