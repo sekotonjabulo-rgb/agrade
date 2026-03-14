@@ -9,7 +9,7 @@ export default function App() {
   const [response, setResponse] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const handleAskGroq = useCallback(async (prompt: string) => {
+  const handleAskGroq = useCallback(async (base64Image: string) => {
     setIsLoading(true);
     setResponse("Thinking...");
     try {
@@ -17,12 +17,11 @@ export default function App() {
       const timeout = setTimeout(() => {
         controller.abort();
         setResponse("Server is waking up, please try again in 30 seconds.");
-      }, 10000);
-
+      }, 15000);
       const res = await fetch(SERVER_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ base64Image }),
         signal: controller.signal,
       });
       clearTimeout(timeout);
@@ -47,8 +46,8 @@ export default function App() {
         await unregister(shortcut);
       } catch (_) {}
       await register(shortcut, async () => {
-        const screenText = await invoke<string>("capture_screen");
-        handleAskGroq(`Based on this screen content, provide a helpful response: ${screenText}`);
+        const screenBase64 = await invoke<string>("capture_screen");
+        handleAskGroq(screenBase64);
       });
     };
 
@@ -67,8 +66,8 @@ export default function App() {
       <button
         className="ask-button"
         onClick={async () => {
-          const screenText = await invoke<string>("capture_screen");
-          handleAskGroq(`Based on this screen content, provide a helpful response: ${screenText}`);
+          const screenBase64 = await invoke<string>("capture_screen");
+          handleAskGroq(screenBase64);
         }}
       >
         Ask
