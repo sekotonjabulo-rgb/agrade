@@ -82,10 +82,7 @@ fn capture_screen() -> String {
         log("Seeking stream to start...");
         stream.Seek(0).unwrap();
         log("Creating decoder...");
-        let decoder = BitmapDecoder::CreateWithIdAsync(
-            BitmapDecoder::PngDecoderId().unwrap(),
-            &stream,
-        ).unwrap().get().unwrap();
+        let decoder = BitmapDecoder::CreateAsync(&stream).unwrap().get().unwrap();
         log("Getting bitmap...");
         let bitmap = decoder.GetSoftwareBitmapAsync().unwrap().get().unwrap();
         log("Creating OCR engine...");
