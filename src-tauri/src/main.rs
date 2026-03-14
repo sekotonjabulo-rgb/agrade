@@ -78,6 +78,9 @@ fn capture_screen() -> String {
         log("Writing bytes...");
         data_writer.WriteBytes(&bytes).unwrap();
         data_writer.StoreAsync().unwrap().get().unwrap();
+        data_writer.DetachStream().unwrap();
+        log("Seeking stream to start...");
+        stream.Seek(0).unwrap();
         log("Creating decoder...");
         let decoder = BitmapDecoder::CreateWithIdAsync(
             BitmapDecoder::PngDecoderId().unwrap(),
