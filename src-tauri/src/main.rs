@@ -17,6 +17,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
 #[cfg(target_os = "windows")]
 fn apply_stealth_flags(hwnd: HWND) -> windows::core::Result<()> {
     unsafe {
+        eprintln!("Applying stealth flags to HWND: {:?}", hwnd);
         let current_style = GetWindowLongW(hwnd, GWL_EXSTYLE);
         SetWindowLongW(
             hwnd,
@@ -24,6 +25,7 @@ fn apply_stealth_flags(hwnd: HWND) -> windows::core::Result<()> {
             current_style | WS_EX_TRANSPARENT.0 as i32 | WS_EX_LAYERED.0 as i32,
         );
         SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE)?;
+        eprintln!("Stealth flags applied successfully");
     }
     Ok(())
 }
@@ -45,6 +47,7 @@ fn capture_screen() -> String {
     let mut lt = LepTess::new(None, "eng").unwrap();
     lt.set_image_from_mem(&bytes).unwrap();
     let text = lt.get_utf8_text().unwrap();
+    eprintln!("Captured screen text length: {}", text.len());
     text
 }
 
@@ -57,6 +60,7 @@ fn main() {
             {
                 use tauri::Manager;
                 let main_window = app.get_webview_window("main").unwrap();
+                main_window.set_always_on_top(true).unwrap();
                 let hwnd = HWND(main_window.hwnd().unwrap().0 as *mut core::ffi::c_void);
                 apply_stealth_flags(hwnd).expect("Failed to apply stealth flags");
             }
