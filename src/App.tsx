@@ -3,8 +3,7 @@ import { register, unregister } from "@tauri-apps/plugin-global-shortcut";
 import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
 
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
-const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
+const SERVER_URL = "https://agrade-cbwf.onrender.com/ask";
 
 export default function App() {
   const [response, setResponse] = useState<string>("");
@@ -13,22 +12,15 @@ export default function App() {
   const handleAskGroq = useCallback(async (prompt: string) => {
     setIsLoading(true);
     try {
-      const res = await fetch(GROQ_API_URL, {
+      const res = await fetch(SERVER_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${GROQ_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
-          messages: [{ role: "user", content: prompt }],
-          max_tokens: 512,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
       });
       const data = await res.json();
-      setResponse(data.choices[0].message.content);
+      setResponse(data.result);
     } catch (err) {
-      setResponse("Error reaching Groq.");
+      setResponse("Error: " + String(err));
     } finally {
       setIsLoading(false);
     }
@@ -36,15 +28,14 @@ export default function App() {
 
   useEffect(() => {
     const shortcut = "CommandOrControl+Alt+A";
+
     const setupShortcut = async () => {
       try {
         await unregister(shortcut);
       } catch (_) {}
       await register(shortcut, async () => {
         const screenText = await invoke<string>("capture_screen");
-        handleAskGroq(
-          `Based on this screen content, provide a helpful response: ${screenText}`,
-        );
+        handleAskGroq(`Based on this screen content, provide a helpful response: ${screenText}`);
       });
     };
 
@@ -64,9 +55,7 @@ export default function App() {
         className="ask-button"
         onClick={async () => {
           const screenText = await invoke<string>("capture_screen");
-          handleAskGroq(
-            `Based on this screen content, provide a helpful response: ${screenText}`,
-          );
+          handleAskGroq(`Based on this screen content, provide a helpful response: ${screenText}`);
         }}
       >
         Ask
