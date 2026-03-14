@@ -13,7 +13,7 @@ use windows::Win32::Foundation::HWND;
 #[cfg(target_os = "windows")]
 use windows::Win32::UI::WindowsAndMessaging::{
     GetWindowLongW, SetWindowLongW, SetWindowDisplayAffinity,
-    GWL_EXSTYLE, WS_EX_TRANSPARENT, WS_EX_LAYERED, WDA_EXCLUDEFROMCAPTURE,
+    GWL_EXSTYLE, WS_EX_LAYERED, WDA_EXCLUDEFROMCAPTURE,
 };
 
 fn log(msg: &str) {
@@ -34,7 +34,7 @@ fn apply_stealth_flags(hwnd: HWND) -> windows::core::Result<()> {
         SetWindowLongW(
             hwnd,
             GWL_EXSTYLE,
-            current_style | WS_EX_TRANSPARENT.0 as i32 | WS_EX_LAYERED.0 as i32,
+            current_style | WS_EX_LAYERED.0 as i32,
         );
         SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE)?;
         log("Stealth flags applied successfully");
