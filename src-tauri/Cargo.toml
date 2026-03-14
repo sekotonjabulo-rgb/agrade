@@ -22,3 +22,9 @@ screenshots = "0.8"
 base64 = "0.22"
 image = "0.25"
 leptess = "0.14"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0.58", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+]}
