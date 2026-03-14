@@ -2,6 +2,8 @@
 
 use screenshots::Screen;
 use std::io::Cursor;
+use std::io::Write;
+use std::fs::OpenOptions;
 use image::ImageEncoder;
 use image::codecs::png::PngEncoder;
 use leptess::LepTess;
@@ -14,10 +16,19 @@ use windows::Win32::UI::WindowsAndMessaging::{
     GWL_EXSTYLE, WS_EX_TRANSPARENT, WS_EX_LAYERED, WDA_EXCLUDEFROMCAPTURE,
 };
 
+fn log(msg: &str) {
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("C:\\agrade_debug.log")
+        .unwrap();
+    writeln!(file, "{}", msg).unwrap();
+}
+
 #[cfg(target_os = "windows")]
 fn apply_stealth_flags(hwnd: HWND) -> windows::core::Result<()> {
     unsafe {
-        eprintln!("Applying stealth flags to HWND: {:?}", hwnd);
+        log("Applying stealth flags...");
         let current_style = GetWindowLongW(hwnd, GWL_EXSTYLE);
         SetWindowLongW(
             hwnd,
@@ -25,13 +36,14 @@ fn apply_stealth_flags(hwnd: HWND) -> windows::core::Result<()> {
             current_style | WS_EX_TRANSPARENT.0 as i32 | WS_EX_LAYERED.0 as i32,
         );
         SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE)?;
-        eprintln!("Stealth flags applied successfully");
+        log("Stealth flags applied successfully");
     }
     Ok(())
 }
 
 #[tauri::command]
 fn capture_screen() -> String {
+    log("capture_screen called");
     let screens = Screen::all().unwrap();
     let screen = screens[0];
     let image = screen.capture().unwrap();
@@ -47,15 +59,17 @@ fn capture_screen() -> String {
     let mut lt = LepTess::new(None, "eng").unwrap();
     lt.set_image_from_mem(&bytes).unwrap();
     let text = lt.get_utf8_text().unwrap();
-    eprintln!("Captured screen text length: {}", text.len());
+    log(&format!("Screen text length: {}", text.len()));
     text
 }
 
 fn main() {
+    log("App starting...");
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .invoke_handler(tauri::generate_handler![capture_screen])
         .setup(|app| {
+            log("Setup running...");
             #[cfg(target_os = "windows")]
             {
                 use tauri::Manager;
@@ -64,6 +78,7 @@ fn main() {
                 let hwnd = HWND(main_window.hwnd().unwrap().0 as *mut core::ffi::c_void);
                 apply_stealth_flags(hwnd).expect("Failed to apply stealth flags");
             }
+            log("Setup complete");
             Ok(())
         })
         .run(tauri::generate_context!())
