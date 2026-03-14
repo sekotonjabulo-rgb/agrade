@@ -6,6 +6,7 @@ use std::io::Write;
 use std::fs::OpenOptions;
 use image::ImageEncoder;
 use image::codecs::png::PngEncoder;
+use base64::{Engine as _, engine::general_purpose};
 
 #[cfg(target_os = "windows")]
 use windows::Win32::Foundation::HWND;
@@ -62,40 +63,9 @@ fn capture_screen() -> String {
         )
         .unwrap();
 
-    #[cfg(target_os = "windows")]
-    {
-        log("Starting Windows OCR...");
-        use windows::Graphics::Imaging::BitmapDecoder;
-        use windows::Media::Ocr::OcrEngine;
-        use windows::Storage::Streams::InMemoryRandomAccessStream;
-        use windows::Storage::Streams::DataWriter;
-
-        log("Creating stream...");
-        let stream = InMemoryRandomAccessStream::new().unwrap();
-        log("Creating writer...");
-        let writer = stream.GetOutputStreamAt(0).unwrap();
-        let data_writer = DataWriter::CreateDataWriter(&writer).unwrap();
-        log("Writing bytes...");
-        data_writer.WriteBytes(&bytes).unwrap();
-        data_writer.StoreAsync().unwrap().get().unwrap();
-        data_writer.DetachStream().unwrap();
-        log("Seeking stream to start...");
-        stream.Seek(0).unwrap();
-        log("Creating decoder...");
-        let decoder = BitmapDecoder::CreateAsync(&stream).unwrap().get().unwrap();
-        log("Getting bitmap...");
-        let bitmap = decoder.GetSoftwareBitmapAsync().unwrap().get().unwrap();
-        log("Creating OCR engine...");
-        let engine = OcrEngine::TryCreateFromUserProfileLanguages().unwrap();
-        log("Running recognition...");
-        let result = engine.RecognizeAsync(&bitmap).unwrap().get().unwrap();
-        let text = result.Text().unwrap().to_string();
-        log(&format!("OCR text length: {}", text.len()));
-        return text;
-    }
-
-    #[cfg(not(target_os = "windows"))]
-    String::from("OCR only supported on Windows")
+    let base64 = general_purpose::STANDARD.encode(&bytes);
+    log(&format!("Base64 length: {}", base64.len()));
+    base64
 }
 
 fn main() {
