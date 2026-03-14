@@ -27,8 +27,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const shortcut = "CommandOrControl+Alt+A";
-
+const shortcut = "CommandOrControl+Shift+G";
     const setupShortcut = async () => {
       try {
         await unregister(shortcut);
