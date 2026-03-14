@@ -5,6 +5,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.get("/", (req, res) => {
+  res.status(200).send("ok");
+});
+
 app.post("/ask", async (req, res) => {
   try {
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -30,11 +34,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
-
-setInterval(() => {
-  fetch(`https://agrade-cbwf.onrender.com/ask`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt: "ping" }),
-  }).catch(() => {});
-}, 840000);
