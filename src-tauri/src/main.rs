@@ -64,24 +64,30 @@ fn capture_screen() -> String {
 
     #[cfg(target_os = "windows")]
     {
+        log("Starting Windows OCR...");
         use windows::Graphics::Imaging::BitmapDecoder;
         use windows::Media::Ocr::OcrEngine;
         use windows::Storage::Streams::InMemoryRandomAccessStream;
         use windows::Storage::Streams::DataWriter;
 
+        log("Creating stream...");
         let stream = InMemoryRandomAccessStream::new().unwrap();
+        log("Creating writer...");
         let writer = stream.GetOutputStreamAt(0).unwrap();
         let data_writer = DataWriter::CreateDataWriter(&writer).unwrap();
+        log("Writing bytes...");
         data_writer.WriteBytes(&bytes).unwrap();
         data_writer.StoreAsync().unwrap().get().unwrap();
-
+        log("Creating decoder...");
         let decoder = BitmapDecoder::CreateWithIdAsync(
             BitmapDecoder::PngDecoderId().unwrap(),
             &stream,
         ).unwrap().get().unwrap();
-
+        log("Getting bitmap...");
         let bitmap = decoder.GetSoftwareBitmapAsync().unwrap().get().unwrap();
+        log("Creating OCR engine...");
         let engine = OcrEngine::TryCreateFromUserProfileLanguages().unwrap();
+        log("Running recognition...");
         let result = engine.RecognizeAsync(&bitmap).unwrap().get().unwrap();
         let text = result.Text().unwrap().to_string();
         log(&format!("OCR text length: {}", text.len()));
