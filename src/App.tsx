@@ -52,26 +52,19 @@ export default function App() {
     win.setSize(new LogicalSize(WIDTH, expanded ? EXPANDED_HEIGHT : COLLAPSED_HEIGHT));
   }, [expanded]);
 
-  const handleAskGroq = useCallback(async (
-    base64Image: string,
-    userMessage?: string,
-    screenshotOnly?: boolean
+  const sendToServer = async (
+    userText: string,
+    base64Image?: string,
+    screenshotOnly?: boolean,
+    currentHistory?: HistoryEntry[]
   ) => {
-    const userText = userMessage?.trim() || "";
-
-    const userEntry: Message = {
-      role: "user",
-      text: userText || "",
-      screenshotOnly: screenshotOnly && !userText,
-    };
-
-    setMessages(prev => [...prev, userEntry]);
+    const hist = currentHistory || history;
     setExpanded(true);
     setIsLoading(true);
     setTimeout(scrollToBottom, 50);
 
     const updatedHistory: HistoryEntry[] = [
-      ...history,
+      ...hist,
       { role: "user", content: userText || "[screenshot captured]" },
     ];
 
@@ -85,26 +78,27 @@ export default function App() {
         }]);
       }, 15000);
 
+      const body: Record<string, unknown> = {
+        message: userText,
+        history: updatedHistory,
+      };
+
+      if (base64Image) {
+        body.base64Image = base64Image;
+      }
+
       const res = await fetch(SERVER_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          base64Image,
-          message: userText,
-          history: updatedHistory,
-        }),
+        body: JSON.stringify(body),
         signal: controller.signal,
       });
 
       clearTimeout(timeout);
       const data = await res.json();
       const aiText = stripMarkdown(data.result || data.message || "No response received.");
-
       setMessages(prev => [...prev, { role: "ai", text: aiText }]);
-      setHistory([
-        ...updatedHistory,
-        { role: "assistant", content: aiText },
-      ]);
+      setHistory([...updatedHistory, { role: "assistant", content: aiText }]);
     } catch (err: unknown) {
       if (err instanceof Error && err.name !== "AbortError") {
         setMessages(prev => [...prev, { role: "ai", text: "Error: " + String(err) }]);
@@ -113,6 +107,48 @@ export default function App() {
       setIsLoading(false);
       setTimeout(scrollToBottom, 50);
     }
+  };
+
+  const handleSubmit = async () => {
+    if (!message.trim() || isLoading) return;
+    const userText = message.trim();
+    setMessage("");
+    setMessages(prev => [...prev, { role: "user", text: userText }]);
+    await sendToServer(userText);
+  };
+
+  const handleCaptureOnly = async () => {
+    if (isLoading) return;
+    const screenBase64 = await invoke<string>("capture_screen");
+    setMessages(prev => [...prev, {
+      role: "user",
+      text: "",
+      screenshotOnly: true,
+    }]);
+    await sendToServer("", screenBase64, true);
+  };
+
+  const handleCaptureWithMessage = async () => {
+    if (isLoading) return;
+    const userText = message.trim();
+    const screenBase64 = await invoke<string>("capture_screen");
+    setMessage("");
+    setMessages(prev => [...prev, {
+      role: "user",
+      text: userText || "",
+      screenshotOnly: !userText,
+    }]);
+    await sendToServer(userText, screenBase64, !userText);
+  };
+
+  const handleAskGroq = useCallback(async (base64Image: string, userMessage?: string) => {
+    const userText = userMessage?.trim() || "";
+    setMessages(prev => [...prev, {
+      role: "user",
+      text: userText || "",
+      screenshotOnly: !userText,
+    }]);
+    await sendToServer(userText, base64Image, !userText, history);
   }, [history]);
 
   useEffect(() => {
@@ -129,7 +165,7 @@ export default function App() {
 
       await register("CommandOrControl+Shift+G", async () => {
         const screenBase64 = await invoke<string>("capture_screen");
-        handleAskGroq(screenBase64, message, true);
+        handleAskGroq(screenBase64, message);
         setMessage("");
       });
 
@@ -147,20 +183,6 @@ export default function App() {
     setupShortcuts();
     return () => { shortcuts.forEach(s => unregister(s)); };
   }, [handleAskGroq, message]);
-
-  const handleSubmit = async () => {
-    if (!message.trim() || isLoading) return;
-    const screenBase64 = await invoke<string>("capture_screen");
-    handleAskGroq(screenBase64, message, false);
-    setMessage("");
-  };
-
-  const handleCaptureOnly = async () => {
-    if (isLoading) return;
-    const screenBase64 = await invoke<string>("capture_screen");
-    handleAskGroq(screenBase64, "", true);
-    setMessage("");
-  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -236,7 +258,12 @@ export default function App() {
         </div>
         <div className="hud-footer">
           <div className="hud-footer-row">
-            <button className="hud-icon-btn" onClick={handleCaptureOnly} disabled={isLoading} title="Capture screen">
+            <button
+              className="hud-icon-btn"
+              onClick={handleCaptureWithMessage}
+              disabled={isLoading}
+              title={message.trim() ? "Send message with screenshot" : "Capture screen"}
+            >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                 <circle cx="12" cy="13" r="4"/>
@@ -253,7 +280,12 @@ export default function App() {
                 rows={1}
                 disabled={isLoading}
               />
-              <button className="hud-send-btn" onClick={handleSubmit} disabled={isLoading || !message.trim()} title="Send">
+              <button
+                className="hud-send-btn"
+                onClick={handleSubmit}
+                disabled={isLoading || !message.trim()}
+                title="Send message"
+              >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M2 21l21-9L2 3v7l15 2-15 2z"/>
                 </svg>
