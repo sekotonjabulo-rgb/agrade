@@ -19,6 +19,7 @@ interface HistoryEntry {
 }
 
 const stripMarkdown = (text: string): string => {
+  if (!text) return "";
   return text
     .replace(/\*\*(.+?)\*\*/gs, '$1')
     .replace(/\*(.+?)\*/gs, '$1')
@@ -97,7 +98,7 @@ export default function App() {
 
       clearTimeout(timeout);
       const data = await res.json();
-      const aiText = stripMarkdown(data.result);
+      const aiText = stripMarkdown(data.result || data.message || "No response received.");
 
       setMessages(prev => [...prev, { role: "ai", text: aiText }]);
       setHistory([
