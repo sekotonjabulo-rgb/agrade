@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>agrade login</title>
+  <title>agrade signup</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@300&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -15,8 +15,6 @@
       --white: #f4f3f0;
       --muted: rgba(244, 243, 240, 0.38);
       --surface: rgba(244, 243, 240, 0.04);
-      --border: rgba(244, 243, 240, 0.07);
-      --border-strong: rgba(244, 243, 240, 0.14);
       --error: rgba(255, 100, 100, 0.85);
     }
 
@@ -82,7 +80,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 120px 24px 80px;
+      padding: 120px 24px 100px;
     }
 
     .auth-wrap {
@@ -136,25 +134,7 @@
       transition: background 0.2s;
     }
 
-    .form-input::placeholder { color: rgba(244,243,240,0.14); }
     .form-input:focus { background: rgba(244,243,240,0.07); }
-
-    .form-footer {
-      display: flex;
-      justify-content: flex-end;
-      margin-bottom: 28px;
-      margin-top: -6px;
-    }
-
-    .form-link {
-      font-size: 0.75rem;
-      color: var(--muted);
-      text-decoration: none;
-      font-family: 'DM Mono', monospace;
-      transition: color 0.2s;
-    }
-
-    .form-link:hover { color: var(--white); }
 
     .btn-submit {
       width: 100%;
@@ -167,6 +147,7 @@
       font-size: 0.88rem;
       font-weight: 500;
       cursor: pointer;
+      margin-top: 14px;
       transition: opacity 0.2s, transform 0.15s;
     }
 
@@ -180,6 +161,15 @@
       font-family: 'DM Mono', monospace;
       text-align: center;
       min-height: 1em;
+    }
+
+    .auth-terms {
+      margin-top: 14px;
+      text-align: center;
+      font-size: 0.7rem;
+      color: rgba(244,243,240,0.2);
+      font-family: 'DM Mono', monospace;
+      line-height: 1.6;
     }
 
     .auth-switch {
@@ -204,6 +194,7 @@
       padding: 24px 48px;
       display: flex;
       align-items: center;
+      justify-content: space-between;
     }
 
     .footer-logo {
@@ -213,6 +204,22 @@
       text-decoration: none;
     }
 
+    .footer-links {
+      display: flex;
+      gap: 28px;
+    }
+
+    .footer-link {
+      font-size: 0.65rem;
+      color: rgba(244,243,240,0.2);
+      text-decoration: none;
+      font-family: 'DM Mono', monospace;
+      letter-spacing: 0.06em;
+      transition: color 0.2s;
+    }
+
+    .footer-link:hover { color: var(--muted); }
+
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(16px); }
       to { opacity: 1; transform: translateY(0); }
@@ -221,10 +228,11 @@
 </head>
 <body>
 
+
   <main class="page">
     <div class="auth-wrap">
-      <p class="auth-title">Welcome back</p>
-      <p class="auth-subtitle">Sign in to your agrade account</p>
+      <p class="auth-title">Create account</p>
+      <p class="auth-subtitle">Start your agrade subscription today</p>
 
       <div class="form-group">
         <label class="form-label">Email</label>
@@ -234,13 +242,14 @@
         <label class="form-label">Password</label>
         <input type="password" class="form-input" id="passwordInput" />
       </div>
-      <div class="form-footer">
-        <a href="#" class="form-link">Forgot password?</a>
+      <div class="form-group">
+        <label class="form-label">Confirm password</label>
+        <input type="password" class="form-input" id="confirmPasswordInput" />
       </div>
-      <button class="btn-submit" id="submitBtn">Log in</button>
+      <button class="btn-submit" id="submitBtn">Create account</button>
       <p class="error-msg" id="errorMsg"></p>
 
-      <p class="auth-switch">Don't have an account? <a href="signup.html">Sign up</a></p>
+      <p class="auth-switch">Already have an account? <a href="login.html">Log in</a></p>
     </div>
   </main>
 
@@ -258,25 +267,36 @@
     document.getElementById('submitBtn').addEventListener('click', async () => {
       const email = document.getElementById('emailInput').value.trim();
       const password = document.getElementById('passwordInput').value;
+      const confirmPassword = document.getElementById('confirmPasswordInput').value;
       const errorMsg = document.getElementById('errorMsg');
       const submitBtn = document.getElementById('submitBtn');
 
       errorMsg.textContent = '';
 
-      if (!email || !password) {
+      if (!email || !password || !confirmPassword) {
         errorMsg.textContent = 'Please fill in all fields.';
         return;
       }
 
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Signing in...';
+      if (password !== confirmPassword) {
+        errorMsg.textContent = 'Passwords do not match.';
+        return;
+      }
 
-      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (password.length < 6) {
+        errorMsg.textContent = 'Password must be at least 6 characters.';
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating account...';
+
+      const { data, error } = await supabaseClient.auth.signUp({ email, password });
 
       if (error) {
         errorMsg.textContent = error.message;
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Log in';
+        submitBtn.textContent = 'Create account';
         return;
       }
 
