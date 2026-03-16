@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState, useRef } from "react";
 import { register, unregister } from "@tauri-apps/plugin-global-shortcut";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { LogicalSize } from "@tauri-apps/api/dpi";
 import "./App.css";
 
 const SERVER_URL = "https://agrade-cbwf.onrender.com/ask";
@@ -28,16 +27,11 @@ const stripMarkdown = (text: string): string => {
     .replace(/^\s*[-•]\s/gm, '· ');
 };
 
-const WIDTH = 560;
-const COLLAPSED_HEIGHT = 320;
-const EXPANDED_HEIGHT = 500;
-
 export default function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [message, setMessage] = useState<string>("");
-  const [expanded, setExpanded] = useState<boolean>(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
 
@@ -47,19 +41,12 @@ export default function App() {
     }
   };
 
-  useEffect(() => {
-    const win = getCurrentWindow();
-    win.setSize(new LogicalSize(WIDTH, expanded ? EXPANDED_HEIGHT : COLLAPSED_HEIGHT));
-  }, [expanded]);
-
   const sendToServer = async (
     userText: string,
     base64Image?: string,
-    screenshotOnly?: boolean,
     currentHistory?: HistoryEntry[]
   ) => {
-    const hist = currentHistory || history;
-    setExpanded(true);
+    const hist = currentHistory ?? history;
     setIsLoading(true);
     setTimeout(scrollToBottom, 50);
 
@@ -82,10 +69,7 @@ export default function App() {
         message: userText,
         history: updatedHistory,
       };
-
-      if (base64Image) {
-        body.base64Image = base64Image;
-      }
+      if (base64Image) body.base64Image = base64Image;
 
       const res = await fetch(SERVER_URL, {
         method: "POST",
@@ -117,17 +101,6 @@ export default function App() {
     await sendToServer(userText);
   };
 
-  const handleCaptureOnly = async () => {
-    if (isLoading) return;
-    const screenBase64 = await invoke<string>("capture_screen");
-    setMessages(prev => [...prev, {
-      role: "user",
-      text: "",
-      screenshotOnly: true,
-    }]);
-    await sendToServer("", screenBase64, true);
-  };
-
   const handleCaptureWithMessage = async () => {
     if (isLoading) return;
     const userText = message.trim();
@@ -138,7 +111,7 @@ export default function App() {
       text: userText || "",
       screenshotOnly: !userText,
     }]);
-    await sendToServer(userText, screenBase64, !userText);
+    await sendToServer(userText, screenBase64);
   };
 
   const handleAskGroq = useCallback(async (base64Image: string, userMessage?: string) => {
@@ -148,7 +121,7 @@ export default function App() {
       text: userText || "",
       screenshotOnly: !userText,
     }]);
-    await sendToServer(userText, base64Image, !userText, history);
+    await sendToServer(userText, base64Image, history);
   }, [history]);
 
   useEffect(() => {
@@ -156,6 +129,10 @@ export default function App() {
       "CommandOrControl+Shift+G",
       "CommandOrControl+B",
       "Control+H",
+      "Control+Left",
+      "Control+Right",
+      "Control+Up",
+      "Control+Down",
     ];
 
     const setupShortcuts = async () => {
@@ -178,6 +155,32 @@ export default function App() {
       await register("Control+H", async () => {
         await getCurrentWindow().hide();
       });
+
+      const STEP = 40;
+
+      await register("Control+Left", async () => {
+        const win = getCurrentWindow();
+        const pos = await win.outerPosition();
+        await win.setPosition({ type: "Physical", x: pos.x - STEP, y: pos.y } as any);
+      });
+
+      await register("Control+Right", async () => {
+        const win = getCurrentWindow();
+        const pos = await win.outerPosition();
+        await win.setPosition({ type: "Physical", x: pos.x + STEP, y: pos.y } as any);
+      });
+
+      await register("Control+Up", async () => {
+        const win = getCurrentWindow();
+        const pos = await win.outerPosition();
+        await win.setPosition({ type: "Physical", x: pos.x, y: pos.y - STEP } as any);
+      });
+
+      await register("Control+Down", async () => {
+        const win = getCurrentWindow();
+        const pos = await win.outerPosition();
+        await win.setPosition({ type: "Physical", x: pos.x, y: pos.y + STEP } as any);
+      });
     };
 
     setupShortcuts();
@@ -199,7 +202,6 @@ export default function App() {
   const clearConversation = () => {
     setMessages([]);
     setHistory([]);
-    setExpanded(false);
   };
 
   return (
@@ -258,12 +260,7 @@ export default function App() {
         </div>
         <div className="hud-footer">
           <div className="hud-footer-row">
-            <button
-              className="hud-icon-btn"
-              onClick={handleCaptureWithMessage}
-              disabled={isLoading}
-              title={message.trim() ? "Send message with screenshot" : "Capture screen"}
-            >
+            <button className="hud-icon-btn" onClick={handleCaptureWithMessage} disabled={isLoading} title="Capture screen">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                 <circle cx="12" cy="13" r="4"/>
@@ -280,12 +277,7 @@ export default function App() {
                 rows={1}
                 disabled={isLoading}
               />
-              <button
-                className="hud-send-btn"
-                onClick={handleSubmit}
-                disabled={isLoading || !message.trim()}
-                title="Send message"
-              >
+              <button className="hud-send-btn" onClick={handleSubmit} disabled={isLoading || !message.trim()} title="Send">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M2 21l21-9L2 3v7l15 2-15 2z"/>
                 </svg>
