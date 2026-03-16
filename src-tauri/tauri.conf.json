@@ -14,14 +14,14 @@
       {
         "title": "agrade",
         "width": 680,
-        "height": 380,
-        "resizable": false,
+        "height": 64,
+        "resizable": true,
         "fullscreen": false,
         "decorations": false,
-        "visible": false
         "transparent": true,
         "alwaysOnTop": true,
-        "skipTaskbar": true
+        "skipTaskbar": true,
+        "visible": false
       }
     ],
     "security": {
