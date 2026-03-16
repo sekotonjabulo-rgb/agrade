@@ -27,39 +27,24 @@ body { background: transparent; overflow: hidden; }
   overflow: hidden;
 }
 
-.hud-drag-handle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px 0 4px;
-  cursor: grab;
-  flex-shrink: 0;
-  user-select: none;
-}
-
-.hud-drag-handle:active { cursor: grabbing; }
-
-.hud-drag-bar {
-  width: 36px;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 2px;
-  pointer-events: none;
-}
-
 .hud-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 16px 8px;
+  padding: 14px 16px 10px;
   flex-shrink: 0;
+  cursor: grab;
+  user-select: none;
 }
+
+.hud-header:active { cursor: grabbing; }
 
 .hud-title {
   font-size: 0.76rem;
   font-weight: 500;
   letter-spacing: 0.02em;
   color: var(--text);
+  pointer-events: none;
 }
 
 .hud-header-actions {
@@ -78,6 +63,8 @@ body { background: transparent; overflow: hidden; }
   justify-content: center;
   padding: 2px;
   transition: color 0.15s;
+  position: relative;
+  z-index: 10;
 }
 
 .hud-action-btn:hover { color: rgba(255, 255, 255, 0.7); }
