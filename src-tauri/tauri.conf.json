@@ -13,7 +13,7 @@
     "windows": [
       {
         "title": "agrade",
-        "width": 680,
+        "width": 480,
         "height": 64,
         "resizable": true,
         "fullscreen": false,
