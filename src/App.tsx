@@ -13,6 +13,11 @@ interface Message {
   screenshotOnly?: boolean;
 }
 
+interface HistoryEntry {
+  role: "user" | "assistant";
+  content: string;
+}
+
 const stripMarkdown = (text: string): string => {
   return text
     .replace(/\*\*(.+?)\*\*/gs, '$1')
@@ -28,6 +33,7 @@ const EXPANDED_HEIGHT = 500;
 
 export default function App() {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [message, setMessage] = useState<string>("");
   const [expanded, setExpanded] = useState<boolean>(false);
@@ -45,16 +51,29 @@ export default function App() {
     win.setSize(new LogicalSize(WIDTH, expanded ? EXPANDED_HEIGHT : COLLAPSED_HEIGHT));
   }, [expanded]);
 
-  const handleAskGroq = useCallback(async (base64Image: string, userMessage?: string, screenshotOnly?: boolean) => {
+  const handleAskGroq = useCallback(async (
+    base64Image: string,
+    userMessage?: string,
+    screenshotOnly?: boolean
+  ) => {
     const userText = userMessage?.trim() || "";
-    setMessages(prev => [...prev, {
+
+    const userEntry: Message = {
       role: "user",
       text: userText || "",
       screenshotOnly: screenshotOnly && !userText,
-    }]);
+    };
+
+    setMessages(prev => [...prev, userEntry]);
     setExpanded(true);
     setIsLoading(true);
     setTimeout(scrollToBottom, 50);
+
+    const updatedHistory: HistoryEntry[] = [
+      ...history,
+      { role: "user", content: userText || "[screenshot captured]" },
+    ];
+
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => {
@@ -64,15 +83,27 @@ export default function App() {
           text: "Server is waking up — try again in 30 seconds.",
         }]);
       }, 15000);
+
       const res = await fetch(SERVER_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ base64Image, message: userText }),
+        body: JSON.stringify({
+          base64Image,
+          message: userText,
+          history: updatedHistory,
+        }),
         signal: controller.signal,
       });
+
       clearTimeout(timeout);
       const data = await res.json();
-      setMessages(prev => [...prev, { role: "ai", text: stripMarkdown(data.result) }]);
+      const aiText = stripMarkdown(data.result);
+
+      setMessages(prev => [...prev, { role: "ai", text: aiText }]);
+      setHistory([
+        ...updatedHistory,
+        { role: "assistant", content: aiText },
+      ]);
     } catch (err: unknown) {
       if (err instanceof Error && err.name !== "AbortError") {
         setMessages(prev => [...prev, { role: "ai", text: "Error: " + String(err) }]);
@@ -81,7 +112,7 @@ export default function App() {
       setIsLoading(false);
       setTimeout(scrollToBottom, 50);
     }
-  }, []);
+  }, [history]);
 
   useEffect(() => {
     const shortcuts: string[] = [
@@ -144,6 +175,7 @@ export default function App() {
 
   const clearConversation = () => {
     setMessages([]);
+    setHistory([]);
     setExpanded(false);
   };
 
@@ -157,12 +189,15 @@ export default function App() {
               <>
                 <button className="hud-action-btn" onClick={copyLastResponse} title="Copy last response">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                    <rect x="9" y="9" width="13" height="13" rx="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
                   </svg>
                 </button>
                 <button className="hud-action-btn" onClick={clearConversation} title="Clear conversation">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                    <path d="M10 11v6"/><path d="M14 11v6"/>
                   </svg>
                 </button>
               </>
