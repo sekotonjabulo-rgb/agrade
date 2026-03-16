@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, useRef } from "react";
 import { register, unregister } from "@tauri-apps/plugin-global-shortcut";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { PhysicalPosition } from "@tauri-apps/api/dpi";
+import { PhysicalPosition, LogicalSize } from "@tauri-apps/api/dpi";
 import "./App.css";
 
 const SERVER_URL = "https://agrade-cbwf.onrender.com/ask";
@@ -22,11 +22,15 @@ const stripMarkdown = (text: string): string => {
     .replace(/^\s*[-•]\s/gm, '· ');
 };
 
+const COLLAPSED_HEIGHT = 64;
+const EXPANDED_HEIGHT = 500;
+const WIDTH = 680;
+
 export default function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [message, setMessage] = useState<string>("");
-  const [visible, setVisible] = useState<boolean>(true);
+  const [expanded, setExpanded] = useState<boolean>(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
 
@@ -36,6 +40,19 @@ export default function App() {
     }
   };
 
+  useEffect(() => {
+    getCurrentWindow().show();
+  }, []);
+
+  useEffect(() => {
+    const win = getCurrentWindow();
+    if (expanded) {
+      win.setSize(new LogicalSize(WIDTH, EXPANDED_HEIGHT));
+    } else {
+      win.setSize(new LogicalSize(WIDTH, COLLAPSED_HEIGHT));
+    }
+  }, [expanded]);
+
   const handleAskGroq = useCallback(async (base64Image: string, userMessage?: string, screenshotOnly?: boolean) => {
     const userText = userMessage?.trim() || "";
     setMessages(prev => [...prev, {
@@ -43,6 +60,7 @@ export default function App() {
       text: userText || "",
       screenshotOnly: screenshotOnly && !userText,
     }]);
+    setExpanded(true);
     setIsLoading(true);
     setTimeout(scrollToBottom, 50);
     try {
@@ -74,59 +92,64 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const step = 30;
-    const handleKey = async (e: KeyboardEvent) => {
-      const win = getCurrentWindow();
-
-      if (e.ctrlKey && e.key === 'h') {
-        setVisible(false);
-        await win.hide();
-        return;
-      }
-
-      if (e.shiftKey && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-        e.preventDefault();
-        const pos = await win.outerPosition();
-        const x = pos.x;
-        const y = pos.y;
-        if (e.key === 'ArrowLeft') await win.setPosition(new PhysicalPosition(x - step, y));
-        if (e.key === 'ArrowRight') await win.setPosition(new PhysicalPosition(x + step, y));
-        if (e.key === 'ArrowUp') await win.setPosition(new PhysicalPosition(x, y - step));
-        if (e.key === 'ArrowDown') await win.setPosition(new PhysicalPosition(x, y + step));
-      }
-    };
-
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, []);
-
-  useEffect(() => {
-    const captureShortcut = "CommandOrControl+Shift+G";
-    const showShortcut = "CommandOrControl+B";
+    const shortcuts: string[] = [
+      "CommandOrControl+Shift+G",
+      "CommandOrControl+B",
+      "Shift+Left",
+      "Shift+Right",
+      "Shift+Up",
+      "Shift+Down",
+      "Control+H",
+    ];
 
     const setupShortcuts = async () => {
-      try { await unregister(captureShortcut); } catch (_) {}
-      try { await unregister(showShortcut); } catch (_) {}
+      for (const s of shortcuts) {
+        try { await unregister(s); } catch (_) {}
+      }
 
-      await register(captureShortcut, async () => {
+      await register("CommandOrControl+Shift+G", async () => {
         const screenBase64 = await invoke<string>("capture_screen");
         handleAskGroq(screenBase64, message, true);
         setMessage("");
       });
 
-      await register(showShortcut, async () => {
+      await register("CommandOrControl+B", async () => {
         const win = getCurrentWindow();
         await win.show();
         await win.setFocus();
-        setVisible(true);
+      });
+
+      await register("Control+H", async () => {
+        await getCurrentWindow().hide();
+      });
+
+      await register("Shift+Left", async () => {
+        const win = getCurrentWindow();
+        const pos = await win.outerPosition();
+        await win.setPosition(new PhysicalPosition(pos.x - 30, pos.y));
+      });
+
+      await register("Shift+Right", async () => {
+        const win = getCurrentWindow();
+        const pos = await win.outerPosition();
+        await win.setPosition(new PhysicalPosition(pos.x + 30, pos.y));
+      });
+
+      await register("Shift+Up", async () => {
+        const win = getCurrentWindow();
+        const pos = await win.outerPosition();
+        await win.setPosition(new PhysicalPosition(pos.x, pos.y - 30));
+      });
+
+      await register("Shift+Down", async () => {
+        const win = getCurrentWindow();
+        const pos = await win.outerPosition();
+        await win.setPosition(new PhysicalPosition(pos.x, pos.y + 30));
       });
     };
 
     setupShortcuts();
-    return () => {
-      unregister(captureShortcut);
-      unregister(showShortcut);
-    };
+    return () => { shortcuts.forEach(s => unregister(s)); };
   }, [handleAskGroq, message]);
 
   const handleSubmit = async () => {
@@ -155,61 +178,66 @@ export default function App() {
     if (lastAi) navigator.clipboard.writeText(lastAi.text);
   };
 
-  const clearConversation = () => setMessages([]);
-
-  if (!visible) return null;
+  const clearConversation = () => {
+    setMessages([]);
+    setExpanded(false);
+  };
 
   return (
     <div className="hud-root">
-      <div className="hud-panel">
-        <div className="hud-header">
-          <span className="hud-title">agrade</span>
-          <div className="hud-header-actions">
-            <button className="hud-action-btn" onClick={copyLastResponse} title="Copy last response">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-              </svg>
-            </button>
-            <button className="hud-action-btn" onClick={clearConversation} title="Clear conversation">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
-              </svg>
-            </button>
-            <div className={`hud-status ${isLoading ? "active" : ""}`} />
+      <div className={`hud-panel ${expanded ? "expanded" : ""}`}>
+        {expanded && (
+          <div className="hud-header">
+            <span className="hud-title">agrade</span>
+            <div className="hud-header-actions">
+              <button className="hud-action-btn" onClick={copyLastResponse} title="Copy last response">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+              </button>
+              <button className="hud-action-btn" onClick={clearConversation} title="Clear conversation">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
+                </svg>
+              </button>
+              <div className={`hud-status ${isLoading ? "active" : ""}`} />
+            </div>
           </div>
-        </div>
-        <div className="hud-body" ref={bodyRef}>
-          <div className="hud-messages">
-            {messages.map((msg, i) => (
-              msg.role === "user" ? (
-                <div key={i} className="hud-bubble-row user">
-                  <div className="hud-bubble user">
-                    {msg.screenshotOnly ? (
-                      <div className="hud-screenshot-tag">
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                          <circle cx="12" cy="13" r="4"/>
-                        </svg>
-                        Screenshot captured
-                      </div>
-                    ) : msg.text}
+        )}
+        {expanded && (
+          <div className="hud-body" ref={bodyRef}>
+            <div className="hud-messages">
+              {messages.map((msg, i) => (
+                msg.role === "user" ? (
+                  <div key={i} className="hud-bubble-row user">
+                    <div className="hud-bubble user">
+                      {msg.screenshotOnly ? (
+                        <div className="hud-screenshot-tag">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                            <circle cx="12" cy="13" r="4"/>
+                          </svg>
+                          Screenshot captured
+                        </div>
+                      ) : msg.text}
+                    </div>
                   </div>
+                ) : (
+                  <div key={i} className="hud-ai-response">{msg.text}</div>
+                )
+              ))}
+              {isLoading && (
+                <div className="hud-thinking">
+                  <span /><span /><span />
                 </div>
-              ) : (
-                <div key={i} className="hud-ai-response">{msg.text}</div>
-              )
-            ))}
-            {isLoading && (
-              <div className="hud-thinking">
-                <span /><span /><span />
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
+        )}
         <div className="hud-footer">
           <div className="hud-footer-row">
             <button className="hud-icon-btn" onClick={handleCaptureOnly} disabled={isLoading} title="Capture screen">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                 <circle cx="12" cy="13" r="4"/>
               </svg>
@@ -226,13 +254,12 @@ export default function App() {
                 disabled={isLoading}
               />
               <button className="hud-send-btn" onClick={handleSubmit} disabled={isLoading || !message.trim()} title="Send">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M2 21l21-9L2 3v7l15 2-15 2z"/>
                 </svg>
               </button>
             </div>
           </div>
-          <p className="hud-hint">⇧ arrows to move · ⌃H hide · ⌃B show</p>
         </div>
       </div>
     </div>
