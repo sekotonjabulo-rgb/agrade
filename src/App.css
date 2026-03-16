@@ -235,7 +235,12 @@ body { background: transparent; overflow: hidden; }
 
 .hud-icon-btn:hover { background: rgba(255, 255, 255, 0.15); }
 .hud-icon-btn:disabled { opacity: 0.25; cursor: not-allowed; }
-
+.hud-limit {
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+  border-left: 2px solid rgba(255, 255, 255, 0.1);
+  padding-left: 8px;
+}
 .hud-send-btn {
   display: flex;
   align-items: center;
