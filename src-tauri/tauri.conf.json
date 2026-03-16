@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "copilot-overlay",
+  "productName": "agrade",
   "version": "0.1.0",
   "identifier": "com.agrade.app",
   "build": {
@@ -12,9 +12,13 @@
   "app": {
     "windows": [
       {
-        "title": "copilot-overlay",
-        "width": 800,
+        "title": "agrade",
+        "width": 380,
         "height": 600,
+        "resizable": false,
+        "fullscreen": false,
+        "decorations": false,
+        "transparent": true,
         "alwaysOnTop": true,
         "skipTaskbar": true
       }
