@@ -13,9 +13,9 @@
     "windows": [
       {
         "title": "agrade",
-        "width": 480,
-        "height": 64,
-        "resizable": true,
+        "width": 320,
+        "height": 320,
+        "resizable": false,
         "fullscreen": false,
         "decorations": false,
         "transparent": true,
