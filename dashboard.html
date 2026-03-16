@@ -18,15 +18,11 @@
       --surface-hover: rgba(244, 243, 240, 0.07);
     }
 
-    html { scroll-behavior: smooth; }
-
     body {
       background: var(--black);
       color: var(--white);
       font-family: 'DM Sans', sans-serif;
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
       overflow-x: hidden;
     }
 
@@ -40,63 +36,21 @@
       opacity: 0.4;
     }
 
-    nav {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      z-index: 100;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 24px 48px;
-      transition: background 0.3s;
-    }
-
-    nav.scrolled {
-      background: rgba(8, 8, 10, 0.9);
-      backdrop-filter: blur(20px);
-    }
-
-    .nav-logo {
-      font-family: 'Instrument Serif', serif;
-      font-size: 1.4rem;
-      color: var(--white);
-      text-decoration: none;
-      letter-spacing: -0.01em;
-    }
-
-    .nav-right {
-      display: flex;
-      align-items: center;
-      gap: 24px;
-    }
-
-    .nav-email {
-      font-size: 0.75rem;
-      color: var(--muted);
-      font-family: 'DM Mono', monospace;
-    }
-
-    .btn-signout {
-      font-size: 0.82rem;
-      color: var(--muted);
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-family: 'DM Sans', sans-serif;
-      transition: color 0.2s;
-      padding: 0;
-    }
-
-    .btn-signout:hover { color: var(--white); }
-
     .page {
       position: relative;
       z-index: 1;
-      flex: 1;
-      padding: 120px 48px 100px;
       max-width: 900px;
       margin: 0 auto;
-      width: 100%;
+      padding: 80px 48px 80px;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 64px;
+      opacity: 0;
+      animation: fadeUp 0.7s ease 0.1s forwards;
     }
 
     .page-greeting {
@@ -106,27 +60,53 @@
       letter-spacing: -0.02em;
       color: var(--white);
       margin-bottom: 8px;
-      opacity: 0;
-      animation: fadeUp 0.7s ease 0.1s forwards;
     }
 
-    .page-greeting em { font-style: italic; color: var(--muted); }
+    .page-greeting em {
+      font-style: italic;
+      color: var(--muted);
+    }
 
     .page-subtitle {
       font-size: 0.88rem;
       color: var(--muted);
       font-weight: 300;
-      margin-bottom: 64px;
-      opacity: 0;
-      animation: fadeUp 0.7s ease 0.2s forwards;
     }
+
+    .header-meta {
+      text-align: right;
+      flex-shrink: 0;
+      padding-top: 6px;
+    }
+
+    .header-email {
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      margin-bottom: 6px;
+    }
+
+    .btn-signout {
+      font-size: 0.75rem;
+      color: rgba(244,243,240,0.2);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: 'DM Mono', monospace;
+      transition: color 0.2s;
+      padding: 0;
+      display: block;
+      margin-left: auto;
+    }
+
+    .btn-signout:hover { color: var(--muted); }
 
     .dashboard-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 12px;
       opacity: 0;
-      animation: fadeUp 0.7s ease 0.3s forwards;
+      animation: fadeUp 0.7s ease 0.25s forwards;
     }
 
     @media (max-width: 640px) { .dashboard-grid { grid-template-columns: 1fr; } }
@@ -158,18 +138,12 @@
       letter-spacing: -0.01em;
     }
 
-    .dash-card-value {
-      font-size: 2.4rem;
-      font-weight: 300;
-      letter-spacing: -0.03em;
-      color: var(--white);
-    }
-
     .dash-card-meta {
       font-size: 0.78rem;
       color: var(--muted);
       font-weight: 300;
       line-height: 1.6;
+      margin-top: 6px;
     }
 
     .status-pill {
@@ -200,11 +174,10 @@
     .btn-download {
       display: inline-flex;
       align-items: center;
-      gap: 10px;
       background: var(--white);
       color: var(--black);
       border: none;
-      padding: 13px 24px;
+      padding: 12px 24px;
       border-radius: 100px;
       font-family: 'DM Sans', sans-serif;
       font-size: 0.84rem;
@@ -223,7 +196,7 @@
       background: var(--surface-hover);
       color: var(--muted);
       border: none;
-      padding: 13px 24px;
+      padding: 12px 24px;
       border-radius: 100px;
       font-family: 'DM Sans', sans-serif;
       font-size: 0.84rem;
@@ -235,37 +208,13 @@
 
     .btn-manage:hover { background: rgba(244,243,240,0.1); color: var(--white); }
 
-    footer {
-      position: relative;
-      z-index: 1;
-      padding: 24px 48px;
+    .account-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
     }
-
-    .footer-logo {
-      font-family: 'Instrument Serif', serif;
-      font-size: 1.1rem;
-      color: var(--white);
-      text-decoration: none;
-    }
-
-    .footer-links {
-      display: flex;
-      gap: 28px;
-    }
-
-    .footer-link {
-      font-size: 0.65rem;
-      color: rgba(244,243,240,0.2);
-      text-decoration: none;
-      font-family: 'DM Mono', monospace;
-      letter-spacing: 0.06em;
-      transition: color 0.2s;
-    }
-
-    .footer-link:hover { color: var(--muted); }
 
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(16px); }
@@ -276,8 +225,17 @@
 <body>
 
   <main class="page">
-    <p class="page-greeting">Good to see you<em id="greetingName"></em></p>
-    <p class="page-subtitle">Manage your subscription and download the latest version.</p>
+
+    <div class="page-header">
+      <div>
+        <p class="page-greeting">Good to see you, <em id="greetingName"></em></p>
+        <p class="page-subtitle">Manage your subscription and download the latest version.</p>
+      </div>
+      <div class="header-meta">
+        <p class="header-email" id="navEmail"></p>
+        <button class="btn-signout" id="signOutBtn">Sign out</button>
+      </div>
+    </div>
 
     <div class="dashboard-grid">
 
@@ -285,7 +243,7 @@
         <p class="dash-card-label">Subscription</p>
         <div>
           <p class="dash-card-title">No active plan</p>
-          <p class="dash-card-meta" style="margin-top:8px">Choose a plan to unlock full access to the agrade overlay.</p>
+          <p class="dash-card-meta">Choose a plan to unlock full access to the agrade overlay.</p>
         </div>
         <div class="status-pill">
           <div class="status-dot" id="statusDot"></div>
@@ -298,17 +256,17 @@
         <p class="dash-card-label">Download</p>
         <div>
           <p class="dash-card-title">agrade for Windows</p>
-          <p class="dash-card-meta" style="margin-top:8px">Version 0.1.0 · Windows 10 / 11 · 64-bit</p>
+          <p class="dash-card-meta">Version 0.1.0 · Windows 10 / 11 · 64-bit</p>
         </div>
         <a href="https://github.com/sekotonjabulo-rgb/agrade/releases/latest/download/agrade_0.1.0_x64-setup.exe" class="btn-download">Download</a>
       </div>
 
       <div class="dash-card dash-card-full">
         <p class="dash-card-label">Account</p>
-        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
+        <div class="account-row">
           <div>
             <p class="dash-card-title" id="accountEmail"></p>
-            <p class="dash-card-meta" style="margin-top:6px">Member since <span id="memberSince"></span></p>
+            <p class="dash-card-meta">Member since <span id="memberSince"></span></p>
           </div>
           <button class="btn-manage" id="signOutBtnCard">Sign out</button>
         </div>
@@ -323,10 +281,6 @@
       'https://llabvdbcvilnbukroqxn.supabase.co',
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxsYWJ2ZGJjdmlsbmJ1a3JvcXhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2OTQzNzQsImV4cCI6MjA4OTI3MDM3NH0.WLdB5hNXMHJ63JGwgXgY8TEEGz7k5AVbsV7aVDy6xQU'
     );
-
-    window.addEventListener('scroll', () => {
-      document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 20);
-    });
 
     async function signOut() {
       await supabaseClient.auth.signOut();
@@ -350,9 +304,9 @@
       const firstName = email.split('@')[0];
 
       document.getElementById('navEmail').textContent = email;
+      document.getElementById('greetingName').textContent = firstName + '.';
       document.getElementById('accountEmail').textContent = email;
       document.getElementById('memberSince').textContent = createdAt;
-      document.getElementById('greetingName').textContent = ', ' + firstName + '.';
     })();
   </script>
 </body>
