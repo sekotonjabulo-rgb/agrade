@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, useRef } from "react";
 import { register, unregister } from "@tauri-apps/plugin-global-shortcut";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { PhysicalPosition, LogicalSize } from "@tauri-apps/api/dpi";
+import { LogicalSize } from "@tauri-apps/api/dpi";
 import "./App.css";
 
 const SERVER_URL = "https://agrade-cbwf.onrender.com/ask";
@@ -22,9 +22,9 @@ const stripMarkdown = (text: string): string => {
     .replace(/^\s*[-•]\s/gm, '· ');
 };
 
-const COLLAPSED_HEIGHT = 64;
+const WIDTH = 320;
+const COLLAPSED_HEIGHT = 320;
 const EXPANDED_HEIGHT = 500;
-const WIDTH = 680;
 
 export default function App() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -41,16 +41,8 @@ export default function App() {
   };
 
   useEffect(() => {
-    getCurrentWindow().show();
-  }, []);
-
-  useEffect(() => {
     const win = getCurrentWindow();
-    if (expanded) {
-      win.setSize(new LogicalSize(WIDTH, EXPANDED_HEIGHT));
-    } else {
-      win.setSize(new LogicalSize(WIDTH, COLLAPSED_HEIGHT));
-    }
+    win.setSize(new LogicalSize(WIDTH, expanded ? EXPANDED_HEIGHT : COLLAPSED_HEIGHT));
   }, [expanded]);
 
   const handleAskGroq = useCallback(async (base64Image: string, userMessage?: string, screenshotOnly?: boolean) => {
@@ -95,10 +87,6 @@ export default function App() {
     const shortcuts: string[] = [
       "CommandOrControl+Shift+G",
       "CommandOrControl+B",
-      "Shift+Left",
-      "Shift+Right",
-      "Shift+Up",
-      "Shift+Down",
       "Control+H",
     ];
 
@@ -121,30 +109,6 @@ export default function App() {
 
       await register("Control+H", async () => {
         await getCurrentWindow().hide();
-      });
-
-      await register("Shift+Left", async () => {
-        const win = getCurrentWindow();
-        const pos = await win.outerPosition();
-        await win.setPosition(new PhysicalPosition(pos.x - 30, pos.y));
-      });
-
-      await register("Shift+Right", async () => {
-        const win = getCurrentWindow();
-        const pos = await win.outerPosition();
-        await win.setPosition(new PhysicalPosition(pos.x + 30, pos.y));
-      });
-
-      await register("Shift+Up", async () => {
-        const win = getCurrentWindow();
-        const pos = await win.outerPosition();
-        await win.setPosition(new PhysicalPosition(pos.x, pos.y - 30));
-      });
-
-      await register("Shift+Down", async () => {
-        const win = getCurrentWindow();
-        const pos = await win.outerPosition();
-        await win.setPosition(new PhysicalPosition(pos.x, pos.y + 30));
       });
     };
 
@@ -183,57 +147,64 @@ export default function App() {
     setExpanded(false);
   };
 
+  const handleDragStart = async () => {
+    await getCurrentWindow().startDragging();
+  };
+
   return (
     <div className="hud-root">
-      <div className={`hud-panel ${expanded ? "expanded" : ""}`}>
-        {expanded && (
-          <div className="hud-header">
-            <span className="hud-title">agrade</span>
-            <div className="hud-header-actions">
-              <button className="hud-action-btn" onClick={copyLastResponse} title="Copy last response">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                </svg>
-              </button>
-              <button className="hud-action-btn" onClick={clearConversation} title="Clear conversation">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
-                </svg>
-              </button>
-              <div className={`hud-status ${isLoading ? "active" : ""}`} />
-            </div>
+      <div className="hud-panel">
+        <div className="hud-drag-handle" onMouseDown={handleDragStart}>
+          <div className="hud-drag-bar" />
+        </div>
+        <div className="hud-header">
+          <span className="hud-title">agrade</span>
+          <div className="hud-header-actions">
+            {messages.length > 0 && (
+              <>
+                <button className="hud-action-btn" onClick={copyLastResponse} title="Copy last response">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
+                </button>
+                <button className="hud-action-btn" onClick={clearConversation} title="Clear conversation">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
+                  </svg>
+                </button>
+              </>
+            )}
+            <div className={`hud-status ${isLoading ? "active" : ""}`} />
           </div>
-        )}
-        {expanded && (
-          <div className="hud-body" ref={bodyRef}>
-            <div className="hud-messages">
-              {messages.map((msg, i) => (
-                msg.role === "user" ? (
-                  <div key={i} className="hud-bubble-row user">
-                    <div className="hud-bubble user">
-                      {msg.screenshotOnly ? (
-                        <div className="hud-screenshot-tag">
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                            <circle cx="12" cy="13" r="4"/>
-                          </svg>
-                          Screenshot captured
-                        </div>
-                      ) : msg.text}
-                    </div>
+        </div>
+        <div className="hud-body" ref={bodyRef}>
+          <div className="hud-messages">
+            {messages.map((msg, i) => (
+              msg.role === "user" ? (
+                <div key={i} className="hud-bubble-row user">
+                  <div className="hud-bubble user">
+                    {msg.screenshotOnly ? (
+                      <div className="hud-screenshot-tag">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                          <circle cx="12" cy="13" r="4"/>
+                        </svg>
+                        Screenshot captured
+                      </div>
+                    ) : msg.text}
                   </div>
-                ) : (
-                  <div key={i} className="hud-ai-response">{msg.text}</div>
-                )
-              ))}
-              {isLoading && (
-                <div className="hud-thinking">
-                  <span /><span /><span />
                 </div>
-              )}
-            </div>
+              ) : (
+                <div key={i} className="hud-ai-response">{msg.text}</div>
+              )
+            ))}
+            {isLoading && (
+              <div className="hud-thinking">
+                <span /><span /><span />
+              </div>
+            )}
           </div>
-        )}
+        </div>
         <div className="hud-footer">
           <div className="hud-footer-row">
             <button className="hud-icon-btn" onClick={handleCaptureOnly} disabled={isLoading} title="Capture screen">
