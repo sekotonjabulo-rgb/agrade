@@ -6,6 +6,7 @@
   <title>agrade login</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@300&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -14,8 +15,7 @@
       --white: #f4f3f0;
       --muted: rgba(244, 243, 240, 0.38);
       --surface: rgba(244, 243, 240, 0.04);
-      --border: rgba(244, 243, 240, 0.07);
-      --border-strong: rgba(244, 243, 240, 0.14);
+      --error: rgba(255, 100, 100, 0.85);
     }
 
     html { scroll-behavior: smooth; }
@@ -80,7 +80,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 120px 24px 80px;
+      padding: 120px 24px 100px;
     }
 
     .auth-wrap {
@@ -88,21 +88,6 @@
       max-width: 400px;
       opacity: 0;
       animation: fadeUp 0.7s ease 0.1s forwards;
-    }
-
-    .auth-logo {
-      font-family: 'Instrument Serif', serif;
-      font-size: 1.8rem;
-      color: var(--white);
-      margin-bottom: 8px;
-      letter-spacing: -0.02em;
-    }
-
-    .auth-tagline {
-      font-size: 0.82rem;
-      color: var(--muted);
-      font-weight: 300;
-      margin-bottom: 48px;
     }
 
     .auth-title {
@@ -149,7 +134,6 @@
       transition: background 0.2s;
     }
 
-    .form-input::placeholder { color: rgba(244,243,240,0.14); }
     .form-input:focus { background: rgba(244,243,240,0.07); }
 
     .form-footer {
@@ -184,6 +168,16 @@
     }
 
     .btn-submit:hover { opacity: 0.85; transform: scale(1.01); }
+    .btn-submit:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .error-msg {
+      margin-top: 14px;
+      font-size: 0.75rem;
+      color: var(--error);
+      font-family: 'DM Mono', monospace;
+      text-align: center;
+      min-height: 1em;
+    }
 
     .auth-switch {
       margin-top: 24px;
@@ -207,6 +201,7 @@
       padding: 24px 48px;
       display: flex;
       align-items: center;
+      justify-content: space-between;
     }
 
     .footer-logo {
@@ -216,6 +211,22 @@
       text-decoration: none;
     }
 
+    .footer-links {
+      display: flex;
+      gap: 28px;
+    }
+
+    .footer-link {
+      font-size: 0.65rem;
+      color: rgba(244,243,240,0.2);
+      text-decoration: none;
+      font-family: 'DM Mono', monospace;
+      letter-spacing: 0.06em;
+      transition: color 0.2s;
+    }
+
+    .footer-link:hover { color: var(--muted); }
+
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(16px); }
       to { opacity: 1; transform: translateY(0); }
@@ -224,7 +235,6 @@
 </head>
 <body>
 
-
   <main class="page">
     <div class="auth-wrap">
       <p class="auth-title">Welcome back</p>
@@ -232,24 +242,59 @@
 
       <div class="form-group">
         <label class="form-label">Email</label>
-        <input type="email" class="form-input" />
+        <input type="email" class="form-input" id="emailInput" />
       </div>
       <div class="form-group">
         <label class="form-label">Password</label>
-        <input type="password" class="form-input"" />
+        <input type="password" class="form-input" id="passwordInput" />
       </div>
       <div class="form-footer">
         <a href="#" class="form-link">Forgot password?</a>
       </div>
-      <button class="btn-submit">Log in</button>
+      <button class="btn-submit" id="submitBtn">Log in</button>
+      <p class="error-msg" id="errorMsg"></p>
 
       <p class="auth-switch">Don't have an account? <a href="signup.html">Sign up</a></p>
     </div>
   </main>
 
   <script>
+    const { createClient } = supabase;
+    const supabaseClient = createClient(
+      'https://llabvdbcvilnbukroqxn.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxsYWJ2ZGJjdmlsbmJ1a3JvcXhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2OTQzNzQsImV4cCI6MjA4OTI3MDM3NH0.WLdB5hNXMHJ63JGwgXgY8TEEGz7k5AVbsV7aVDy6xQU'
+    );
+
     window.addEventListener('scroll', () => {
       document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 20);
+    });
+
+    document.getElementById('submitBtn').addEventListener('click', async () => {
+      const email = document.getElementById('emailInput').value.trim();
+      const password = document.getElementById('passwordInput').value;
+      const errorMsg = document.getElementById('errorMsg');
+      const submitBtn = document.getElementById('submitBtn');
+
+      errorMsg.textContent = '';
+
+      if (!email || !password) {
+        errorMsg.textContent = 'Please fill in all fields.';
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Signing in...';
+
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        errorMsg.textContent = error.message;
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Log in';
+        return;
+      }
+
+      window.location.href = 'dashboard.html';
     });
   </script>
 </body>
