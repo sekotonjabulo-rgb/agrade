@@ -22,7 +22,7 @@ const stripMarkdown = (text: string): string => {
     .replace(/^\s*[-•]\s/gm, '· ');
 };
 
-const WIDTH = 320;
+const WIDTH = 560;
 const COLLAPSED_HEIGHT = 320;
 const EXPANDED_HEIGHT = 500;
 
@@ -147,15 +147,11 @@ export default function App() {
     setExpanded(false);
   };
 
-  const handleDragStart = async () => {
-    await getCurrentWindow().startDragging();
-  };
-
   return (
     <div className="hud-root">
       <div className="hud-panel">
-        <div className="hud-drag-handle" onMouseDown={handleDragStart}>
-          <div className="hud-drag-bar" />
+        <div className="hud-drag-handle" data-tauri-drag-region>
+          <div className="hud-drag-bar" data-tauri-drag-region />
         </div>
         <div className="hud-header">
           <span className="hud-title">agrade</span>
