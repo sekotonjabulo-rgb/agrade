@@ -40,10 +40,11 @@ body { background: transparent; overflow: hidden; }
 .hud-drag-handle:active { cursor: grabbing; }
 
 .hud-drag-bar {
-  width: 32px;
+  width: 36px;
   height: 4px;
   background: rgba(255, 255, 255, 0.15);
   border-radius: 2px;
+  pointer-events: none;
 }
 
 .hud-header {
