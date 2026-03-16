@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>agrade signup</title>
+  <title>agrade login</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@300&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -16,6 +17,7 @@
       --surface: rgba(244, 243, 240, 0.04);
       --border: rgba(244, 243, 240, 0.07);
       --border-strong: rgba(244, 243, 240, 0.14);
+      --error: rgba(255, 100, 100, 0.85);
     }
 
     html { scroll-behavior: smooth; }
@@ -137,6 +139,23 @@
     .form-input::placeholder { color: rgba(244,243,240,0.14); }
     .form-input:focus { background: rgba(244,243,240,0.07); }
 
+    .form-footer {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 28px;
+      margin-top: -6px;
+    }
+
+    .form-link {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-decoration: none;
+      font-family: 'DM Mono', monospace;
+      transition: color 0.2s;
+    }
+
+    .form-link:hover { color: var(--white); }
+
     .btn-submit {
       width: 100%;
       padding: 14px;
@@ -148,19 +167,19 @@
       font-size: 0.88rem;
       font-weight: 500;
       cursor: pointer;
-      margin-top: 14px;
       transition: opacity 0.2s, transform 0.15s;
     }
 
     .btn-submit:hover { opacity: 0.85; transform: scale(1.01); }
+    .btn-submit:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
-    .auth-terms {
+    .error-msg {
       margin-top: 14px;
-      text-align: center;
-      font-size: 0.7rem;
-      color: rgba(244,243,240,0.2);
+      font-size: 0.75rem;
+      color: var(--error);
       font-family: 'DM Mono', monospace;
-      line-height: 1.6;
+      text-align: center;
+      min-height: 1em;
     }
 
     .auth-switch {
@@ -204,30 +223,64 @@
 
   <main class="page">
     <div class="auth-wrap">
-      <p class="auth-title">Create account</p>
-      <p class="auth-subtitle">Start your agrade subscription today</p>
+      <p class="auth-title">Welcome back</p>
+      <p class="auth-subtitle">Sign in to your agrade account</p>
 
       <div class="form-group">
         <label class="form-label">Email</label>
-        <input type="email" class="form-input" />
+        <input type="email" class="form-input" id="emailInput" />
+      </div>
       <div class="form-group">
         <label class="form-label">Password</label>
-        <input type="password" class="form-input"/>
+        <input type="password" class="form-input" id="passwordInput" />
       </div>
-      <div class="form-group">
-        <label class="form-label">Confirm password</label>
-        <input type="password" class="form-input" />
+      <div class="form-footer">
+        <a href="#" class="form-link">Forgot password?</a>
       </div>
-      <button class="btn-submit">Create account</button>
+      <button class="btn-submit" id="submitBtn">Log in</button>
+      <p class="error-msg" id="errorMsg"></p>
 
-      <p class="auth-switch">Already have an account? <a href="login.html">Log in</a></p>
+      <p class="auth-switch">Don't have an account? <a href="signup.html">Sign up</a></p>
     </div>
   </main>
 
-
   <script>
+    const { createClient } = supabase;
+    const supabaseClient = createClient(
+      'https://llabvdbcvilnbukroqxn.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxsYWJ2ZGJjdmlsbmJ1a3JvcXhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2OTQzNzQsImV4cCI6MjA4OTI3MDM3NH0.WLdB5hNXMHJ63JGwgXgY8TEEGz7k5AVbsV7aVDy6xQU'
+    );
+
     window.addEventListener('scroll', () => {
       document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 20);
+    });
+
+    document.getElementById('submitBtn').addEventListener('click', async () => {
+      const email = document.getElementById('emailInput').value.trim();
+      const password = document.getElementById('passwordInput').value;
+      const errorMsg = document.getElementById('errorMsg');
+      const submitBtn = document.getElementById('submitBtn');
+
+      errorMsg.textContent = '';
+
+      if (!email || !password) {
+        errorMsg.textContent = 'Please fill in all fields.';
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Signing in...';
+
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        errorMsg.textContent = error.message;
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Log in';
+        return;
+      }
+
+      window.location.href = 'dashboard.html';
     });
   </script>
 </body>
