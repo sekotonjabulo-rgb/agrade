@@ -6,7 +6,7 @@ use std::io::Write;
 use std::fs::OpenOptions;
 use image::ImageEncoder;
 use image::codecs::png::PngEncoder;
-use leptess::LepTess;
+use base64::{Engine as _, engine::general_purpose};
 
 #[cfg(target_os = "windows")]
 use windows::Win32::Foundation::HWND;
@@ -61,19 +61,9 @@ fn capture_screen() -> String {
             image::ColorType::Rgba8.into(),
         )
         .unwrap();
-    let mut lt = match LepTess::new(None, "eng") {
-        Ok(lt) => lt,
-        Err(e) => return format!("OCR init failed: {}", e),
-    };
-    if let Err(e) = lt.set_image_from_mem(&bytes) {
-        return format!("OCR image load failed: {}", e);
-    }
-    let text = match lt.get_utf8_text() {
-        Ok(t) => t,
-        Err(e) => return format!("OCR text extraction failed: {}", e),
-    };
-    log(&format!("OCR text length: {}", text.len()));
-    text
+    let base64 = general_purpose::STANDARD.encode(&bytes);
+    log(&format!("Base64 length: {}", base64.len()));
+    base64
 }
 
 fn main() {
