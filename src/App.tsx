@@ -150,11 +150,8 @@ export default function App() {
   return (
     <div className="hud-root">
       <div className="hud-panel">
-        <div className="hud-drag-handle" data-tauri-drag-region>
-          <div className="hud-drag-bar" data-tauri-drag-region />
-        </div>
-        <div className="hud-header">
-          <span className="hud-title">agrade</span>
+        <div className="hud-header" data-tauri-drag-region>
+          <span className="hud-title" data-tauri-drag-region>agrade</span>
           <div className="hud-header-actions">
             {messages.length > 0 && (
               <>
