@@ -10,6 +10,7 @@ interface Message {
   role: "user" | "ai";
   text: string;
   screenshotOnly?: boolean;
+  isLimit?: boolean;
 }
 
 interface HistoryEntry {
@@ -32,6 +33,7 @@ export default function App() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [message, setMessage] = useState<string>("");
+  const [token, setToken] = useState<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
 
@@ -71,15 +73,31 @@ export default function App() {
       };
       if (base64Image) body.base64Image = base64Image;
 
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
       const res = await fetch(SERVER_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify(body),
         signal: controller.signal,
       });
 
       clearTimeout(timeout);
       const data = await res.json();
+
+      if (res.status === 429) {
+        setMessages(prev => [...prev, {
+          role: "ai",
+          text: data.message || "You've reached your daily limit. Upgrade to Pro for unlimited access.",
+          isLimit: true,
+        }]);
+        setIsLoading(false);
+        return;
+      }
+
       const aiText = stripMarkdown(data.result || data.message || "No response received.");
       setMessages(prev => [...prev, { role: "ai", text: aiText }]);
       setHistory([...updatedHistory, { role: "assistant", content: aiText }]);
@@ -248,7 +266,9 @@ export default function App() {
                   </div>
                 </div>
               ) : (
-                <div key={i} className="hud-ai-response">{msg.text}</div>
+                <div key={i} className={`hud-ai-response ${msg.isLimit ? "hud-limit" : ""}`}>
+                  {msg.text}
+                </div>
               )
             ))}
             {isLoading && (
