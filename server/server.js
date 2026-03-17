@@ -1,3 +1,8 @@
+const supabase = createClient(
+  "https://llabvdbcvilnbukroqxn.supabase.co",
+  process.env.SUPABASE_SERVICE_KEY
+);
+
 const express = require("express");
 const cors = require("cors");
 const { createClient } = require("@supabase/supabase-js");
