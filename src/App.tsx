@@ -2,9 +2,18 @@ import { useCallback, useEffect, useState, useRef } from "react";
 import { register, unregister } from "@tauri-apps/plugin-global-shortcut";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { open } from "@tauri-apps/plugin-shell";
+import { onOpenUrl } from "@tauri-apps/plugin-deep-link";
+import { createClient } from "@supabase/supabase-js";
 import "./App.css";
 
 const SERVER_URL = "https://agrade-cbwf.onrender.com/ask";
+const LOGIN_URL = "https://sekotonjabulo-rgb.github.io/agrade-web/login.html?source=app";
+
+const supabase = createClient(
+  "https://llabvdbcvilnbukroqxn.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxsYWJ2ZGJjdmlsbmJ1a3JvcXhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2OTQzNzQsImV4cCI6MjA4OTI3MDM3NH0.WLdB5hNXMHJ63JGwgXgY8TEEGz7k5AVbsV7aVDy6xQU"
+);
 
 interface Message {
   role: "user" | "ai";
@@ -33,8 +42,57 @@ export default function App() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [message, setMessage] = useState<string>("");
+  const [token, setToken] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState<boolean>(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // check for existing session on launch
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        setToken(data.session.access_token);
+      }
+      setAuthChecked(true);
+    });
+
+    // listen for deep link callback from browser login
+    const unlisten = onOpenUrl((urls) => {
+      const url = urls[0];
+      try {
+        const parsed = new URL(url);
+        const accessToken = parsed.searchParams.get("token");
+        const refreshToken = parsed.searchParams.get("refresh");
+        if (accessToken && refreshToken) {
+          supabase.auth.setSession({
+            access_token: decodeURIComponent(accessToken),
+            refresh_token: decodeURIComponent(refreshToken),
+          }).then(({ data }) => {
+            if (data.session) {
+              setToken(data.session.access_token);
+            }
+          });
+        }
+      } catch (e) {
+        console.error("Deep link parse error:", e);
+      }
+    });
+
+    return () => {
+      unlisten.then(fn => fn());
+    };
+  }, []);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setToken(null);
+    setMessages([]);
+    setHistory([]);
+  };
+
+  const openLoginInBrowser = async () => {
+    await open(LOGIN_URL);
+  };
 
   const scrollToBottom = () => {
     if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
@@ -64,9 +122,12 @@ export default function App() {
       const body: Record<string, unknown> = { message: userText, history: updatedHistory };
       if (base64Image) body.base64Image = base64Image;
 
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
       const res = await fetch(SERVER_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify(body),
         signal: controller.signal,
       });
@@ -77,7 +138,7 @@ export default function App() {
       if (res.status === 429) {
         setMessages(prev => [...prev, {
           role: "ai",
-          text: data.message || "You've reached your daily limit. Upgrade to Pro for unlimited access.",
+          text: data.message || "You've reached your message limit. Upgrade for unlimited access.",
           isLimit: true,
         }]);
         setIsLoading(false);
@@ -184,6 +245,49 @@ export default function App() {
 
   const clearConversation = () => { setMessages([]); setHistory([]); };
 
+  // still checking session on first load
+  if (!authChecked) {
+    return (
+      <div className="hud-root">
+        <div className="hud-panel">
+          <div className="hud-header" data-tauri-drag-region>
+            <span className="hud-title" data-tauri-drag-region>agrade</span>
+            <div className="hud-header-actions">
+              <div className="hud-status" />
+            </div>
+          </div>
+          <div className="hud-body">
+            <div className="hud-auth-waiting">
+              <div className="hud-thinking"><span /><span /><span /></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // not logged in — show login prompt
+  if (!token) {
+    return (
+      <div className="hud-root">
+        <div className="hud-panel">
+          <div className="hud-header" data-tauri-drag-region>
+            <span className="hud-title" data-tauri-drag-region>agrade</span>
+          </div>
+          <div className="hud-body">
+            <div className="hud-auth-waiting">
+              <p className="hud-auth-label">Sign in to get started</p>
+              <p className="hud-auth-sub">Your browser will open to complete login.</p>
+              <button className="hud-auth-open-btn" onClick={openLoginInBrowser}>
+                Open login page
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="hud-root">
       <div className="hud-panel">
@@ -207,6 +311,13 @@ export default function App() {
                 </button>
               </>
             )}
+            <button className="hud-action-btn" onClick={handleSignOut} title="Sign out">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+            </button>
             <div className={`hud-status ${isLoading ? "active" : ""}`} />
           </div>
         </div>
