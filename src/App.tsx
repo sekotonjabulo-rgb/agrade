@@ -48,17 +48,23 @@ export default function App() {
   const bodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // check for existing session silently on launch
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
       if (data.session) {
-        setToken(data.session.access_token);
+        const { data: userData, error } = await supabase.auth.getUser(
+          data.session.access_token
+        );
+        if (error || !userData.user) {
+          await supabase.auth.signOut();
+          setToken(null);
+          open(LOGIN_URL);
+        } else {
+          setToken(data.session.access_token);
+        }
       } else {
-        // no session — open browser login in background, app stays visible
         open(LOGIN_URL);
       }
     });
 
-    // listen for deep link callback from browser login
     const unlisten = onOpenUrl((urls) => {
       const url = urls[0];
       try {
@@ -140,6 +146,14 @@ export default function App() {
           text: "",
           isLimit: true,
         }]);
+        setIsLoading(false);
+        return;
+      }
+
+      if (res.status === 401) {
+        await supabase.auth.signOut();
+        setToken(null);
+        open(LOGIN_URL);
         setIsLoading(false);
         return;
       }
@@ -244,7 +258,6 @@ export default function App() {
 
   const clearConversation = () => { setMessages([]); setHistory([]); };
 
-  // check if last message is a limit message to disable input
   const isLimitReached = messages.length > 0 && messages[messages.length - 1].isLimit;
 
   return (
