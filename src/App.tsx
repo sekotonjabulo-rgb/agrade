@@ -2,14 +2,9 @@ import { useCallback, useEffect, useState, useRef } from "react";
 import { register, unregister } from "@tauri-apps/plugin-global-shortcut";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { createClient } from "@supabase/supabase-js";
 import "./App.css";
 
 const SERVER_URL = "https://agrade-cbwf.onrender.com/ask";
-const supabase = createClient(
-  "https://llabvdbcvilnbukroqxn.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxsYWJ2ZGJjdmlsbmJ1a3JvcXhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2OTQzNzQsImV4cCI6MjA4OTI3MDM3NH0.WLdB5hNXMHJ63JGwgXgY8TEEGz7k5AVbsV7aVDy6xQU"
-);
 
 interface Message {
   role: "user" | "ai";
@@ -38,64 +33,8 @@ export default function App() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [message, setMessage] = useState<string>("");
-  const [token, setToken] = useState<string | null>(null);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [authScreen, setAuthScreen] = useState<"login" | "signup">("login");
-  const [authEmail, setAuthEmail] = useState<string>("");
-  const [authPassword, setAuthPassword] = useState<string>("");
-  const [authConfirm, setAuthConfirm] = useState<string>("");
-  const [authError, setAuthError] = useState<string>("");
-  const [authLoading, setAuthLoading] = useState<boolean>(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        setToken(data.session.access_token);
-        setUserEmail(data.session.user.email ?? null);
-      }
-    });
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        setToken(session.access_token);
-        setUserEmail(session.user.email ?? null);
-      } else {
-        setToken(null);
-        setUserEmail(null);
-      }
-    });
-
-    return () => listener.subscription.unsubscribe();
-  }, []);
-
-  const handleLogin = async () => {
-    setAuthError("");
-    if (!authEmail.trim() || !authPassword) { setAuthError("Please fill in all fields."); return; }
-    setAuthLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
-    if (error) setAuthError(error.message);
-    setAuthLoading(false);
-  };
-
-  const handleSignup = async () => {
-    setAuthError("");
-    if (!authEmail.trim() || !authPassword) { setAuthError("Please fill in all fields."); return; }
-    if (authPassword !== authConfirm) { setAuthError("Passwords don't match."); return; }
-    if (authPassword.length < 6) { setAuthError("Password must be at least 6 characters."); return; }
-    setAuthLoading(true);
-    const { error } = await supabase.auth.signUp({ email: authEmail, password: authPassword });
-    if (error) setAuthError(error.message);
-    else setAuthError("Check your email to confirm your account.");
-    setAuthLoading(false);
-  };
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    setMessages([]);
-    setHistory([]);
-  };
 
   const scrollToBottom = () => {
     if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
@@ -125,12 +64,9 @@ export default function App() {
       const body: Record<string, unknown> = { message: userText, history: updatedHistory };
       if (base64Image) body.base64Image = base64Image;
 
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-
       const res = await fetch(SERVER_URL, {
         method: "POST",
-        headers,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
         signal: controller.signal,
       });
@@ -248,73 +184,6 @@ export default function App() {
 
   const clearConversation = () => { setMessages([]); setHistory([]); };
 
-  if (!token) {
-    return (
-      <div className="hud-root">
-        <div className="hud-panel">
-          <div className="hud-header" data-tauri-drag-region>
-            <span className="hud-title" data-tauri-drag-region>agrade</span>
-            <div className="hud-auth-tabs">
-              <button
-                className={`hud-auth-tab ${authScreen === "login" ? "active" : ""}`}
-                onClick={() => { setAuthScreen("login"); setAuthError(""); }}
-              >Log in</button>
-              <button
-                className={`hud-auth-tab ${authScreen === "signup" ? "active" : ""}`}
-                onClick={() => { setAuthScreen("signup"); setAuthError(""); }}
-              >Sign up</button>
-            </div>
-          </div>
-          <div className="hud-auth-body">
-            <div className="hud-auth-field">
-              <label className="hud-auth-label">Email</label>
-              <input
-                className="hud-auth-input"
-                type="email"
-                placeholder="you@email.com"
-                value={authEmail}
-                onChange={e => setAuthEmail(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && (authScreen === "login" ? handleLogin() : handleSignup())}
-              />
-            </div>
-            <div className="hud-auth-field">
-              <label className="hud-auth-label">Password</label>
-              <input
-                className="hud-auth-input"
-                type="password"
-                placeholder="••••••••"
-                value={authPassword}
-                onChange={e => setAuthPassword(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && (authScreen === "login" ? handleLogin() : handleSignup())}
-              />
-            </div>
-            {authScreen === "signup" && (
-              <div className="hud-auth-field">
-                <label className="hud-auth-label">Confirm password</label>
-                <input
-                  className="hud-auth-input"
-                  type="password"
-                  placeholder="••••••••"
-                  value={authConfirm}
-                  onChange={e => setAuthConfirm(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && handleSignup()}
-                />
-              </div>
-            )}
-            {authError && <p className="hud-auth-error">{authError}</p>}
-            <button
-              className="hud-auth-btn"
-              onClick={authScreen === "login" ? handleLogin : handleSignup}
-              disabled={authLoading}
-            >
-              {authLoading ? "Please wait..." : authScreen === "login" ? "Log in" : "Create account"}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="hud-root">
       <div className="hud-panel">
@@ -338,13 +207,6 @@ export default function App() {
                 </button>
               </>
             )}
-            <button className="hud-action-btn" onClick={handleSignOut} title="Sign out">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                <polyline points="16 17 21 12 16 7"/>
-                <line x1="21" y1="12" x2="9" y2="12"/>
-              </svg>
-            </button>
             <div className={`hud-status ${isLoading ? "active" : ""}`} />
           </div>
         </div>
