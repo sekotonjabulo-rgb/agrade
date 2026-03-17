@@ -9,6 +9,36 @@
 
 body { background: transparent; overflow: hidden; }
 
+.hud-limit-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+}
+
+.hud-limit-text {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.45);
+  font-family: 'DM Mono', monospace;
+  text-align: center;
+}
+
+.hud-upgrade-btn {
+  background: rgba(255,255,255,0.92);
+  color: #08080a;
+  border: none;
+  border-radius: 100px;
+  padding: 9px 20px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: opacity 0.2s, transform 0.15s;
+}
+
+.hud-upgrade-btn:hover { opacity: 0.85; transform: scale(1.02); }
+
 .hud-root {
   height: 100vh;
   display: flex;
