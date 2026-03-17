@@ -9,6 +9,7 @@ import "./App.css";
 
 const SERVER_URL = "https://agrade-cbwf.onrender.com/ask";
 const LOGIN_URL = "https://sekotonjabulo-rgb.github.io/agrade-web/login.html?source=app";
+const PRICING_URL = "https://sekotonjabulo-rgb.github.io/agrade-web/index.html#pricing";
 
 const supabase = createClient(
   "https://llabvdbcvilnbukroqxn.supabase.co",
@@ -43,17 +44,18 @@ export default function App() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [message, setMessage] = useState<string>("");
   const [token, setToken] = useState<string | null>(null);
-  const [authChecked, setAuthChecked] = useState<boolean>(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // check for existing session on launch
+    // check for existing session silently on launch
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) {
         setToken(data.session.access_token);
+      } else {
+        // no session — open browser login in background, app stays visible
+        open(LOGIN_URL);
       }
-      setAuthChecked(true);
     });
 
     // listen for deep link callback from browser login
@@ -88,10 +90,7 @@ export default function App() {
     setToken(null);
     setMessages([]);
     setHistory([]);
-  };
-
-  const openLoginInBrowser = async () => {
-    await open(LOGIN_URL);
+    open(LOGIN_URL);
   };
 
   const scrollToBottom = () => {
@@ -138,7 +137,7 @@ export default function App() {
       if (res.status === 429) {
         setMessages(prev => [...prev, {
           role: "ai",
-          text: data.message || "You've reached your message limit. Upgrade for unlimited access.",
+          text: "",
           isLimit: true,
         }]);
         setIsLoading(false);
@@ -239,54 +238,14 @@ export default function App() {
   };
 
   const copyLastResponse = () => {
-    const lastAi = [...messages].reverse().find(m => m.role === "ai");
+    const lastAi = [...messages].reverse().find(m => m.role === "ai" && !m.isLimit);
     if (lastAi) navigator.clipboard.writeText(lastAi.text);
   };
 
   const clearConversation = () => { setMessages([]); setHistory([]); };
 
-  // still checking session on first load
-  if (!authChecked) {
-    return (
-      <div className="hud-root">
-        <div className="hud-panel">
-          <div className="hud-header" data-tauri-drag-region>
-            <span className="hud-title" data-tauri-drag-region>agrade</span>
-            <div className="hud-header-actions">
-              <div className="hud-status" />
-            </div>
-          </div>
-          <div className="hud-body">
-            <div className="hud-auth-waiting">
-              <div className="hud-thinking"><span /><span /><span /></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // not logged in — show login prompt
-  if (!token) {
-    return (
-      <div className="hud-root">
-        <div className="hud-panel">
-          <div className="hud-header" data-tauri-drag-region>
-            <span className="hud-title" data-tauri-drag-region>agrade</span>
-          </div>
-          <div className="hud-body">
-            <div className="hud-auth-waiting">
-              <p className="hud-auth-label">Sign in to get started</p>
-              <p className="hud-auth-sub">Your browser will open to complete login.</p>
-              <button className="hud-auth-open-btn" onClick={openLoginInBrowser}>
-                Open login page
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // check if last message is a limit message to disable input
+  const isLimitReached = messages.length > 0 && messages[messages.length - 1].isLimit;
 
   return (
     <div className="hud-root">
@@ -294,7 +253,7 @@ export default function App() {
         <div className="hud-header" data-tauri-drag-region>
           <span className="hud-title" data-tauri-drag-region>agrade</span>
           <div className="hud-header-actions">
-            {messages.length > 0 && (
+            {messages.length > 0 && !isLimitReached && (
               <>
                 <button className="hud-action-btn" onClick={copyLastResponse} title="Copy last response">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -338,8 +297,18 @@ export default function App() {
                     ) : msg.text}
                   </div>
                 </div>
+              ) : msg.isLimit ? (
+                <div key={i} className="hud-limit-block">
+                  <p className="hud-limit-text">You've used your 5 free messages</p>
+                  <button
+                    className="hud-upgrade-btn"
+                    onClick={() => open(PRICING_URL)}
+                  >
+                    Upgrade to Pro
+                  </button>
+                </div>
               ) : (
-                <div key={i} className={`hud-ai-response ${msg.isLimit ? "hud-limit" : ""}`}>
+                <div key={i} className="hud-ai-response">
                   {msg.text}
                 </div>
               )
@@ -351,33 +320,35 @@ export default function App() {
             )}
           </div>
         </div>
-        <div className="hud-footer">
-          <div className="hud-footer-row">
-            <button className="hud-icon-btn" onClick={handleCaptureWithMessage} disabled={isLoading} title="Capture screen">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                <circle cx="12" cy="13" r="4"/>
-              </svg>
-            </button>
-            <div className="hud-input-row">
-              <textarea
-                ref={inputRef}
-                className="hud-input"
-                placeholder="Ask anything about screen or conversation..."
-                value={message}
-                onChange={e => setMessage(e.target.value)}
-                onKeyDown={handleKeyDown}
-                rows={1}
-                disabled={isLoading}
-              />
-              <button className="hud-send-btn" onClick={handleSubmit} disabled={isLoading || !message.trim()} title="Send">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M2 21l21-9L2 3v7l15 2-15 2z"/>
+        {!isLimitReached && (
+          <div className="hud-footer">
+            <div className="hud-footer-row">
+              <button className="hud-icon-btn" onClick={handleCaptureWithMessage} disabled={isLoading} title="Capture screen">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                  <circle cx="12" cy="13" r="4"/>
                 </svg>
               </button>
+              <div className="hud-input-row">
+                <textarea
+                  ref={inputRef}
+                  className="hud-input"
+                  placeholder="Ask anything about screen or conversation..."
+                  value={message}
+                  onChange={e => setMessage(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  rows={1}
+                  disabled={isLoading}
+                />
+                <button className="hud-send-btn" onClick={handleSubmit} disabled={isLoading || !message.trim()} title="Send">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M2 21l21-9L2 3v7l15 2-15 2z"/>
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
