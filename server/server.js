@@ -8,7 +8,7 @@ app.use(express.json({ limit: "10mb" }));
 
 const supabase = createClient(
   "https://llabvdbcvilnbukroqxn.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxsYWJ2ZGJjdmlsbmJ1a3JvcXhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2OTQzNzQsImV4cCI6MjA4OTI3MDM3NH0.WLdB5hNXMHJ63JGwgXgY8TEEGz7k5AVbsV7aVDy6xQU"
+  process.env.SUPABASE_SERVICE_KEY
 );
 
 const FREE_LIMIT = 5;
@@ -124,7 +124,7 @@ app.post("/ask", async (req, res) => {
     } else if (base64Image) {
       userContent = [
         { type: "image_url", image_url: { url: `data:image/png;base64,${base64Image}` } },
-        { type: "text", text: "Analyze this screen and provide a helpful, concise response to whatever problem or question is visible." },
+        { type: "text", text: "Analyze this screen and provide a helpful, concise response." },
       ];
     } else {
       userContent = message || "Hello";
