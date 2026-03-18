@@ -1,8 +1,3 @@
-const supabase = createClient(
-  "https://llabvdbcvilnbukroqxn.supabase.co",
-  process.env.SUPABASE_SERVICE_KEY
-);
-
 const express = require("express");
 const cors = require("cors");
 const { createClient } = require("@supabase/supabase-js");
@@ -44,12 +39,25 @@ async function checkAndIncrementUsage(userId) {
     .eq("user_id", userId)
     .single();
 
+  const now = new Date();
+
   if (!usage) {
     await supabase.from("message_usage").insert({
       user_id: userId,
       message_count: 1,
-      last_reset: new Date().toISOString(),
+      last_reset: now.toISOString(),
     });
+    return { allowed: true, remaining: FREE_LIMIT - 1 };
+  }
+
+  const lastReset = new Date(usage.last_reset);
+  const hoursSinceReset = (now - lastReset) / (1000 * 60 * 60);
+
+  if (hoursSinceReset >= 24) {
+    await supabase
+      .from("message_usage")
+      .update({ message_count: 1, last_reset: now.toISOString() })
+      .eq("user_id", userId);
     return { allowed: true, remaining: FREE_LIMIT - 1 };
   }
 
