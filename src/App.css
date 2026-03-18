@@ -12,32 +12,31 @@ body { background: transparent; overflow: hidden; }
 .hud-limit-block {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
-  padding: 14px 16px;
+  padding: 4px 4px;
 }
 
 .hud-limit-text {
-  font-size: 0.72rem;
-  color: rgba(255,255,255,0.45);
-  font-family: 'DM Mono', monospace;
-  text-align: center;
+  font-size: 0.76rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
 }
 
 .hud-upgrade-btn {
-  background: rgba(255,255,255,0.92);
-  color: #08080a;
+  background: var(--white, #ffffff);
+  color: #000000;
   border: none;
   border-radius: 100px;
-  padding: 9px 20px;
-  font-size: 0.78rem;
+  padding: 7px 16px;
+  font-size: 0.72rem;
   font-weight: 500;
   cursor: pointer;
-  font-family: 'DM Sans', sans-serif;
-  transition: opacity 0.2s, transform 0.15s;
+  transition: opacity 0.2s;
+  font-family: -apple-system, 'SF Pro Text', sans-serif;
 }
 
-.hud-upgrade-btn:hover { opacity: 0.85; transform: scale(1.02); }
+.hud-upgrade-btn:hover { opacity: 0.85; }
 
 .hud-root {
   height: 100vh;
