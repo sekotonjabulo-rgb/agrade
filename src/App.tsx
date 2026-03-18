@@ -313,17 +313,12 @@ export default function App() {
               ) : msg.isLimit ? (
                 <div key={i} className="hud-limit-block">
                   <p className="hud-limit-text">You've used your 5 free messages</p>
-                  <button
-                    className="hud-upgrade-btn"
-                    onClick={() => open(PRICING_URL)}
-                  >
+                  <button className="hud-upgrade-btn" onClick={() => open(PRICING_URL)}>
                     Upgrade to Pro
                   </button>
                 </div>
               ) : (
-                <div key={i} className="hud-ai-response">
-                  {msg.text}
-                </div>
+                <div key={i} className="hud-ai-response">{msg.text}</div>
               )
             ))}
             {isLoading && (
