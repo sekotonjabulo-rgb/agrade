@@ -1,4 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 use screenshots::Screen;
 use std::io::Cursor;
 use std::io::Write;
@@ -6,6 +7,7 @@ use std::fs::OpenOptions;
 use image::ImageEncoder;
 use image::codecs::png::PngEncoder;
 use base64::{Engine as _, engine::general_purpose};
+
 #[cfg(target_os = "windows")]
 use windows::Win32::Foundation::HWND;
 #[cfg(target_os = "windows")]
@@ -67,13 +69,20 @@ fn capture_screen() -> String {
 fn main() {
     log("App starting...");
     tauri::Builder::default()
-        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            if let Some(url) = argv.iter().find(|a| a.starts_with("agrade://")) {
+                app.emit("deep-link-received", url.to_string()).unwrap();
+            }
+            let win = app.get_webview_window("main").unwrap();
+            win.show().unwrap();
+            win.set_focus().unwrap();
+        }))
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .invoke_handler(tauri::generate_handler![capture_screen])
         .setup(|app| {
             log("Setup running...");
-
             #[cfg(target_os = "windows")]
             {
                 use tauri::Manager;
@@ -82,14 +91,11 @@ fn main() {
                 let hwnd = HWND(main_window.hwnd().unwrap().0 as *mut core::ffi::c_void);
                 apply_stealth_flags(hwnd).expect("Failed to apply stealth flags");
             }
-
-            // register the deep link scheme so the OS knows agrade:// goes to this app
             #[cfg(desktop)]
             {
                 use tauri_plugin_deep_link::DeepLinkExt;
                 app.deep_link().register("agrade").unwrap();
             }
-
             log("Setup complete");
             Ok(())
         })
