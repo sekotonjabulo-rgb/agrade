@@ -5,6 +5,8 @@ use std::io::Cursor;
 use std::io::Write;
 use std::fs::OpenOptions;
 use image::ImageEncoder;
+use tauri::Emitter;
+use tauri::Manager;
 use image::codecs::png::PngEncoder;
 use base64::{Engine as _, engine::general_purpose};
 
