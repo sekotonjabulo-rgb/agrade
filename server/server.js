@@ -6,6 +6,11 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 
+if (!process.env.SUPABASE_SERVICE_KEY) {
+  console.error("FATAL: SUPABASE_SERVICE_KEY is not set");
+  process.exit(1);
+}
+
 const supabase = createClient(
   "https://llabvdbcvilnbukroqxn.supabase.co",
   process.env.SUPABASE_SERVICE_KEY
@@ -16,12 +21,13 @@ const FREE_LIMIT = 5;
 async function getUserFromToken(token) {
   if (!token) return null;
   const { data, error } = await supabase.auth.getUser(token);
+  console.log("getUserFromToken error:", error?.message ?? "none");
   if (error || !data.user) return null;
   return data.user;
 }
 
 async function getSubscription(userId) {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("subscriptions")
     .select("*")
     .eq("user_id", userId)
@@ -29,24 +35,33 @@ async function getSubscription(userId) {
     .order("created_at", { ascending: false })
     .limit(1)
     .single();
+  console.log("getSubscription error:", error?.message ?? "none");
   return data;
 }
 
 async function checkAndIncrementUsage(userId) {
-  const { data: usage } = await supabase
+  const { data: usage, error: usageError } = await supabase
     .from("message_usage")
     .select("*")
     .eq("user_id", userId)
     .single();
 
+  console.log("checkAndIncrementUsage read error:", usageError?.message ?? "none");
+  console.log("checkAndIncrementUsage usage:", JSON.stringify(usage));
+
+  if (usageError && usageError.code !== "PGRST116") {
+    throw new Error(`DB read failed: ${usageError.message}`);
+  }
+
   const now = new Date();
 
   if (!usage) {
-    await supabase.from("message_usage").insert({
+    const { error: insertError } = await supabase.from("message_usage").insert({
       user_id: userId,
       message_count: 1,
       last_reset: now.toISOString(),
     });
+    console.log("insert error:", insertError?.message ?? "none");
     return { allowed: true, remaining: FREE_LIMIT - 1 };
   }
 
@@ -77,14 +92,24 @@ app.get("/", (req, res) => {
   res.status(200).send("ok");
 });
 
+app.get("/health", async (req, res) => {
+  const { data, error } = await supabase.from("message_usage").select("count").limit(1);
+  if (error) return res.status(500).json({ db: "error", detail: error.message });
+  res.json({ db: "ok", data });
+});
+
 app.post("/ask", async (req, res) => {
   try {
     const { base64Image, message, history = [] } = req.body;
     const token = req.headers.authorization?.replace("Bearer ", "");
 
+    console.log("TOKEN:", token ? "present" : "missing");
+
     const user = await getUserFromToken(token);
+    console.log("USER:", user ? user.id : "null");
 
     if (!user) {
+      console.log("Returning 401");
       return res.status(401).json({
         error: "Unauthorized",
         message: "Please sign in to use agrade.",
@@ -92,11 +117,15 @@ app.post("/ask", async (req, res) => {
     }
 
     const subscription = await getSubscription(user.id);
+    console.log("SUBSCRIPTION:", subscription ? "active" : "none");
+
     const isPro = !!subscription;
 
     if (!isPro) {
       const usage = await checkAndIncrementUsage(user.id);
+      console.log("USAGE:", JSON.stringify(usage));
       if (!usage.allowed) {
+        console.log("Returning 429");
         return res.status(429).json({
           error: "Limit reached",
           message: "You've used your 5 free messages. Upgrade to Pro for unlimited access.",
@@ -106,10 +135,11 @@ app.post("/ask", async (req, res) => {
 
     const systemMessage = {
       role: "system",
-      content: "You are agrade, a helpful AI assistant that can see the user's screen and answer questions. Be concise and direct. When analyzing screens, focus on what's relevant to the user's question. If no question is asked, describe what you see and offer to help.",
+      content:
+        "You are agrade, a helpful AI assistant that can see the user's screen and answer questions. Be concise and direct. When analyzing screens, focus on what's relevant to the user's question. If no question is asked, describe what you see and offer to help.",
     };
 
-    const conversationHistory = history.map(entry => ({
+    const conversationHistory = history.map((entry) => ({
       role: entry.role,
       content: entry.content,
     }));
@@ -150,9 +180,10 @@ app.post("/ask", async (req, res) => {
     });
 
     const data = await response.json();
+    console.log("Groq response status:", response.status);
     res.json({ result: data.choices[0].message.content });
   } catch (err) {
-    console.error(err);
+    console.error("ERROR:", err.message);
     res.status(500).json({ error: "Failed to reach Groq" });
   }
 });
